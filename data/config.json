@@ -3,13 +3,13 @@
     {
       "id": "alice",
       "name": "Alice",
-      "password": "password",
+      "password": "1234",
       "avatar_color": "#4F46E5"
     },
     {
       "id": "bob",
       "name": "Bob",
-      "password": "password",
+      "password": "1234",
       "avatar_color": "#059669"
     }
   ],
