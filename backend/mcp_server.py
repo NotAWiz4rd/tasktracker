@@ -4,8 +4,11 @@ Exposes ticket operations as MCP tools so Claude and other agents can read
 and manage tickets alongside human users. Accesses the data layer directly
 (no HTTP round-trips). Identifies as agent:claude.
 
-Run via stdio:
+Run via stdio (default — Claude Code spawns this directly):
     python backend/mcp_server.py
+
+Run via HTTP/SSE (allows remote access; configure .mcp.json with a url):
+    python backend/mcp_server.py --transport http [--host 0.0.0.0] [--port 8001]
 """
 from __future__ import annotations
 
@@ -382,12 +385,54 @@ async def read_resource(uri: types.AnyUrl) -> str:
 # ---------------------------------------------------------------------------
 
 async def main() -> None:
-    async with stdio_server() as (read_stream, write_stream):
-        await server.run(
-            read_stream,
-            write_stream,
-            server.create_initialization_options(),
+    import argparse
+
+    parser = argparse.ArgumentParser(description="TaskTracker MCP Server")
+    parser.add_argument(
+        "--transport",
+        choices=["stdio", "http"],
+        default="stdio",
+        help="Transport to use: stdio (default, for local subprocess) or http (for network access)",
+    )
+    parser.add_argument("--host", default="127.0.0.1", help="HTTP bind host (default: 127.0.0.1)")
+    parser.add_argument("--port", type=int, default=8001, help="HTTP port (default: 8001)")
+    args = parser.parse_args()
+
+    if args.transport == "stdio":
+        async with stdio_server() as (read_stream, write_stream):
+            await server.run(
+                read_stream,
+                write_stream,
+                server.create_initialization_options(),
+            )
+    else:
+        from mcp.server.sse import SseServerTransport
+        from starlette.applications import Starlette
+        from starlette.routing import Mount, Route
+        import uvicorn
+
+        sse = SseServerTransport("/messages/")
+
+        async def handle_sse(request):
+            async with sse.connect_sse(
+                request.scope, request.receive, request._send
+            ) as (read_stream, write_stream):
+                await server.run(
+                    read_stream,
+                    write_stream,
+                    server.create_initialization_options(),
+                )
+
+        starlette_app = Starlette(
+            routes=[
+                Route("/sse", endpoint=handle_sse),
+                Mount("/messages/", app=sse.handle_post_message),
+            ]
         )
+
+        print(f"TaskTracker MCP server listening on http://{args.host}:{args.port}/sse")
+        config = uvicorn.Config(starlette_app, host=args.host, port=args.port)
+        await uvicorn.Server(config).serve()
 
 
 if __name__ == "__main__":

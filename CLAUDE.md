@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 TaskTracker is a Kanban board application with three components:
 - **Backend**: FastAPI REST API with JSON file-based storage
 - **Frontend**: React + TypeScript + Vite + Tailwind CSS kanban board
-- **MCP Server**: (Phase 3, not yet implemented) — direct file access, no HTTP auth
+- **MCP Server**: FastAPI-less MCP server — direct file access, SSE/HTTP transport
 
 ## Development Commands
 
@@ -31,6 +31,17 @@ npm run lint       # ESLint
 npm run preview    # Preview production build
 ```
 
+### MCP Server
+```bash
+# Start the MCP server (required before opening Claude Code)
+python backend/mcp_server.py --transport http           # localhost:8001 (default)
+python backend/mcp_server.py --transport http --host 0.0.0.0 --port 8001  # remote/network
+python backend/mcp_server.py --transport stdio          # stdio mode (not used by default)
+```
+
+The server URL is configured in `.mcp.json`. For local dev it points to `http://localhost:8001/sse`.
+To connect Claude Code to a remote instance, update the `url` in `.mcp.json` to the remote host.
+
 ### Tests (Backend)
 ```bash
 pytest                                  # All tests
@@ -46,10 +57,10 @@ All state lives in three JSON files in `data/`:
 - `columns.json` — board column definitions
 - `config.json` — users (with plaintext passwords), priorities, labels, `next_ticket_number` counter
 
-`backend/store.py` provides file-locked read/write. This same module will be reused directly by the MCP server (no HTTP layer).
+`backend/store.py` provides file-locked read/write. The MCP server imports this module directly — no HTTP round-trips to the backend API.
 
 ### Authentication
-JWT tokens with a hardcoded dev secret (`"tasktracker-dev-secret-key-min32"`). Users/passwords are in `data/config.json`. 72-hour token expiry. The MCP server will bypass auth and access store.py directly, identifying itself as `agent:claude`.
+JWT tokens with a hardcoded dev secret (`"tasktracker-dev-secret-key-min32"`). Users/passwords are in `data/config.json`. 72-hour token expiry. The MCP server bypasses auth and accesses `store.py` directly, identifying itself as `agent:claude`.
 
 ### Frontend Data Flow
 - `useAuth()` — JWT login/logout, token in `localStorage`
@@ -70,8 +81,17 @@ Uses `@dnd-kit` (PointerSensor, 8px activation, `closestCenter` collision). Drop
 - `POST /api/tickets/{id}/comments`, `PATCH /api/tickets/{id}/move`
 - `GET /api/columns`, `GET /api/config`
 
+### MCP Server Architecture
+`backend/mcp_server.py` exposes all ticket operations as MCP tools. It runs as a standalone process and connects to Claude Code via SSE over HTTP (configured in `.mcp.json`).
+
+- Transport: SSE (`mcp.server.sse.SseServerTransport`) served via Starlette + Uvicorn on port 8001
+- `.mcp.json` uses `url: "http://localhost:8001/sse"` — change the host to point at a remote instance
+- Identifies all writes as `agent:claude`
+- Tools: `list_tickets`, `get_ticket`, `create_ticket`, `update_ticket`, `delete_ticket`, `add_comment`, `get_board_summary`, `list_users`
+- Resources: `tasktracker://board`, `tasktracker://tickets`, `tasktracker://ticket/{id}`
+
 ## Phase Status
 - Phase 1 (Backend API): complete
 - Phase 2 (Frontend): complete
-- Phase 3 (MCP Server): not started — see `docs/PLAN.md` for design
+- Phase 3 (MCP Server): complete
 - Phase 4 (Polish): not started
