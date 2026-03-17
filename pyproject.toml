@@ -1,0 +1,26 @@
+[project]
+name = "tasktracker"
+version = "0.1.0"
+description = "A lightweight, local-network kanban board with an MCP interface"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn>=0.34.0",
+    "filelock>=3.16.0",
+    "pydantic>=2.10.0",
+    "pyjwt>=2.10.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "httpx>=0.28.0",
+    "pytest-asyncio>=0.25.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["backend*"]
+
+[build-system]
+requires = ["setuptools>=75.0"]
+build-backend = "setuptools.build_meta"

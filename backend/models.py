@@ -1,0 +1,104 @@
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from pydantic import BaseModel, Field
+
+
+# --- Ticket ---
+
+class Comment(BaseModel):
+    id: str
+    author: str
+    body: str
+    created_at: datetime
+
+
+class Ticket(BaseModel):
+    id: str
+    title: str
+    description: str = ""
+    status: str = "backlog"
+    assignee: str | None = None
+    priority: str = "medium"
+    labels: list[str] = Field(default_factory=list)
+    created_by: str = ""
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    comments: list[Comment] = Field(default_factory=list)
+
+
+class TicketCreate(BaseModel):
+    title: str
+    description: str = ""
+    status: str = "backlog"
+    assignee: str | None = None
+    priority: str = "medium"
+    labels: list[str] = Field(default_factory=list)
+
+
+class TicketUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    assignee: str | None = None
+    priority: str | None = None
+    labels: list[str] | None = None
+
+
+class TicketMove(BaseModel):
+    status: str
+
+
+class CommentCreate(BaseModel):
+    body: str
+
+
+# --- Column ---
+
+class Column(BaseModel):
+    id: str
+    name: str
+    order: int
+
+
+class ColumnsFile(BaseModel):
+    columns: list[Column]
+
+
+# --- Config ---
+
+class User(BaseModel):
+    id: str
+    name: str
+    password: str
+    avatar_color: str
+
+
+class ConfigFile(BaseModel):
+    users: list[User]
+    priorities: list[str]
+    labels: list[str]
+    next_ticket_number: int
+
+
+class UserPublic(BaseModel):
+    id: str
+    name: str
+    avatar_color: str
+
+
+class ConfigPublic(BaseModel):
+    users: list[UserPublic]
+    priorities: list[str]
+    labels: list[str]
+
+
+# --- Auth ---
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class LoginResponse(BaseModel):
+    token: str
+    user: UserPublic
