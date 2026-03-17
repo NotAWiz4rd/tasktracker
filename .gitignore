@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+eggs/
+*.whl
+.Python
+env/
+venv/
+.venv/
+pip-wheel-metadata/
+
+# FastAPI / Backend
+*.db
+*.sqlite3
+.env
+.env.*
+
+# React / Frontend
+node_modules/
+frontend/build/
+frontend/dist/
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.tox/
+
+# IDEs
+.idea/*
+!.idea/modules.xml
+!.idea/vcs.xml
+!.idea/.gitignore
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IML
+!*.iml
