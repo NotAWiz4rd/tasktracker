@@ -1,0 +1,53 @@
+const BASE = '';
+
+function getToken(): string | null {
+  return localStorage.getItem('token');
+}
+
+function headers(): HeadersInit {
+  const token = getToken();
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const res = await fetch(BASE + path, {
+    ...options,
+    headers: { ...headers(), ...(options.headers || {}) },
+  });
+  if (res.status === 401) {
+    const hadToken = !!localStorage.getItem('token');
+    localStorage.removeItem('token');
+    if (hadToken) window.location.reload();
+    throw new Error('Unauthorized');
+  }
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || res.statusText);
+  }
+  if (res.status === 204) return undefined as T;
+  return res.json();
+}
+
+export const api = {
+  login: (username: string, password: string) =>
+    request<{ token: string; user: { id: string; name: string; avatar_color: string } }>('/api/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    }),
+  me: () => request<{ id: string; name: string; avatar_color: string }>('/api/me'),
+  getConfig: () => request<{ users: { id: string; name: string; avatar_color: string }[]; priorities: string[]; labels: string[] }>('/api/config'),
+  getColumns: () => request<{ columns: { id: string; name: string; order: number }[] }>('/api/columns'),
+  getTickets: (params?: Record<string, string>) => {
+    const qs = params ? '?' + new URLSearchParams(params).toString() : '';
+    return request<{ id: string; title: string; description: string; status: string; assignee: string | null; priority: string; labels: string[]; created_by: string; created_at: string; updated_at: string; comments: { id: string; author: string; body: string; created_at: string }[] }[]>(`/api/tickets${qs}`);
+  },
+  getTicket: (id: string) => request<any>(`/api/tickets/${id}`),
+  createTicket: (data: any) => request<any>('/api/tickets', { method: 'POST', body: JSON.stringify(data) }),
+  updateTicket: (id: string, data: any) => request<any>(`/api/tickets/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteTicket: (id: string) => request<void>(`/api/tickets/${id}`, { method: 'DELETE' }),
+  moveTicket: (id: string, status: string) => request<any>(`/api/tickets/${id}/move`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  addComment: (id: string, body: string) => request<any>(`/api/tickets/${id}/comments`, { method: 'POST', body: JSON.stringify({ body }) }),
+};

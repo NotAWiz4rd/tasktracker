@@ -1,0 +1,195 @@
+import { useState, useEffect } from 'react';
+import { X, Trash2 } from 'lucide-react';
+import type { Ticket, Column, TicketCreate, TicketUpdate } from '../types';
+import type { Config } from '../types';
+import { CommentThread } from './CommentThread';
+
+interface Props {
+  ticket?: Ticket | null;
+  columns: Column[];
+  config: Config;
+  defaultStatus?: string;
+  onClose: () => void;
+  onCreate?: (data: TicketCreate) => Promise<void>;
+  onUpdate?: (id: string, data: TicketUpdate) => Promise<void>;
+  onDelete?: (id: string) => Promise<void>;
+  onAddComment?: (id: string, body: string) => Promise<void>;
+}
+
+export function TicketModal({ ticket, columns, config, defaultStatus, onClose, onCreate, onUpdate, onDelete, onAddComment }: Props) {
+  const isEdit = !!ticket;
+  const [title, setTitle] = useState(ticket?.title ?? '');
+  const [description, setDescription] = useState(ticket?.description ?? '');
+  const [status, setStatus] = useState(ticket?.status ?? defaultStatus ?? 'backlog');
+  const [assignee, setAssignee] = useState(ticket?.assignee ?? '');
+  const [priority, setPriority] = useState(ticket?.priority ?? 'medium');
+  const [labels, setLabels] = useState<string[]>(ticket?.labels ?? []);
+  const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const toggleLabel = (l: string) =>
+    setLabels(prev => prev.includes(l) ? prev.filter(x => x !== l) : [...prev, l]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+    setSaving(true);
+    try {
+      if (isEdit && onUpdate) {
+        await onUpdate(ticket!.id, { title, description, assignee: assignee || null, priority, labels });
+      } else if (onCreate) {
+        await onCreate({ title, description, status, assignee: assignee || null, priority, labels });
+      }
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirmDelete) { setConfirmDelete(true); return; }
+    if (onDelete && ticket) {
+      await onDelete(ticket.id);
+      onClose();
+    }
+  };
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
+          <h2 className="text-lg font-semibold text-gray-900">{isEdit ? `Edit ${ticket!.id}` : 'New Ticket'}</h2>
+          <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+            <X size={18} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+            <input
+              type="text"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="Ticket title"
+              autoFocus
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="Describe the ticket…"
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            {!isEdit && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Column</label>
+                <select
+                  value={status}
+                  onChange={e => setStatus(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  {columns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Assignee</label>
+              <select
+                value={assignee}
+                onChange={e => setAssignee(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">Unassigned</option>
+                {config.users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+              <select
+                value={priority}
+                onChange={e => setPriority(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {config.priorities.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Labels</label>
+            <div className="flex flex-wrap gap-2">
+              {config.labels.map(l => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => toggleLabel(l)}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                    labels.includes(l)
+                      ? 'bg-indigo-600 text-white border-indigo-600'
+                      : 'bg-white text-gray-600 border-gray-300 hover:border-indigo-400'
+                  }`}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+            {isEdit ? (
+              <button
+                type="button"
+                onClick={handleDelete}
+                className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition-colors ${
+                  confirmDelete
+                    ? 'bg-red-600 text-white hover:bg-red-700'
+                    : 'text-red-500 hover:bg-red-50'
+                }`}
+              >
+                <Trash2 size={14} />
+                {confirmDelete ? 'Confirm delete?' : 'Delete'}
+              </button>
+            ) : <div />}
+            <div className="flex gap-2">
+              <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+              <button
+                type="submit"
+                disabled={!title.trim() || saving}
+                className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {saving ? 'Saving…' : isEdit ? 'Save changes' : 'Create ticket'}
+              </button>
+            </div>
+          </div>
+        </form>
+
+        {isEdit && onAddComment && (
+          <div className="px-6 pb-6 border-t border-gray-100 pt-4">
+            <CommentThread
+              comments={ticket!.comments}
+              onAdd={(body) => onAddComment(ticket!.id, body)}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
