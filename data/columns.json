@@ -1,29 +1,24 @@
 {
   "columns": [
     {
-      "id": "backlog",
-      "name": "Backlog",
-      "order": 0
-    },
-    {
       "id": "todo",
       "name": "To Do",
-      "order": 1
+      "order": 0
     },
     {
       "id": "in-progress",
       "name": "In Progress",
-      "order": 2
+      "order": 1
     },
     {
       "id": "review",
       "name": "Review",
-      "order": 3
+      "order": 2
     },
     {
       "id": "done",
       "name": "Done",
-      "order": 4
+      "order": 3
     }
   ]
 }
