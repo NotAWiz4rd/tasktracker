@@ -281,40 +281,6 @@ A working MCP server that Claude Code can connect to and use to manage tickets o
 
 ---
 
-## Phase 4 — Polish & Quality of Life
-
-**Goal:** Make it pleasant to use day-to-day.
-
-### Tasks
-
-1. **Startup script**
-   - Single `./run.sh` (or `Makefile`) that:
-     - Installs Python deps (`pip install -e .`)
-     - Installs frontend deps (`npm install`)
-     - Seeds data if `data/` is empty
-     - Starts backend + frontend concurrently
-   - Also a `docker-compose.yml` alternative if preferred
-
-2. **UI polish**
-   - Ticket count badges on column headers
-   - Empty-state illustrations on empty columns
-   - Keyboard shortcuts: `N` for new ticket, `Esc` to close modals
-   - Responsive layout (works on smaller screens)
-   - Subtle animations on drag-and-drop
-
-3. **Activity feed / history**
-   - Add a `history` array to tickets recording status changes, reassignments
-   - Show timeline in the ticket detail modal
-   - Helps track what agents have been doing
-
-4. **Search**
-   - Global search bar in the header
-   - Searches across title, description, and comments
-   - Highlights matching text
-
-5. **Data durability**
-   - Auto-backup: copy `data/*.json` to `data/backups/` on each write (keep last 50)
-   - Since it's all JSON files, the whole board can be committed to git
 
 ---
 
@@ -372,6 +338,5 @@ tasktracker/
 | Phase 1 — Backend API | Moderate | None |
 | Phase 2 — Frontend | Moderate | Phase 1 |
 | Phase 3 — MCP Server | Small-moderate | Phase 1 (shares data layer) |
-| Phase 4 — Polish | Small per item | Phases 1-3 |
 
 Phases 2 and 3 can be worked on in parallel once Phase 1 is complete, since they both depend on the data layer but not on each other.
