@@ -15,6 +15,7 @@ import { FilterBar } from './FilterBar';
 interface Props {
   columns: ColumnType[];
   config: Config;
+  currentUser?: { id: string; name: string };
   tickets: Ticket[];
   onMove: (id: string, status: string) => Promise<Ticket>;
   onCreate: (data: TicketCreate) => Promise<Ticket>;
@@ -23,7 +24,7 @@ interface Props {
   onAddComment: (id: string, body: string) => Promise<Comment>;
 }
 
-export function Board({ columns, config, tickets, onMove, onCreate, onUpdate, onDelete, onAddComment }: Props) {
+export function Board({ columns, config, currentUser, tickets, onMove, onCreate, onUpdate, onDelete, onAddComment }: Props) {
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [newTicketStatus, setNewTicketStatus] = useState<string | null>(null);
   const selectedTicket = selectedTicketId ? (tickets.find(t => t.id === selectedTicketId) ?? null) : null;
@@ -101,6 +102,7 @@ export function Board({ columns, config, tickets, onMove, onCreate, onUpdate, on
           ticket={selectedTicket}
           columns={sortedColumns}
           config={config}
+          currentUser={currentUser}
           onClose={() => setSelectedTicketId(null)}
           onUpdate={onUpdate}
           onDelete={onDelete}
@@ -112,6 +114,7 @@ export function Board({ columns, config, tickets, onMove, onCreate, onUpdate, on
         <TicketModal
           columns={sortedColumns}
           config={config}
+          currentUser={currentUser}
           defaultStatus={newTicketStatus}
           onClose={() => setNewTicketStatus(null)}
           onCreate={onCreate}

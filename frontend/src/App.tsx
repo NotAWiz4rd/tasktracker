@@ -45,6 +45,7 @@ function AppInner() {
         <Board
           columns={columns}
           config={config}
+          currentUser={user ?? undefined}
           tickets={tickets}
           onMove={moveTicket}
           onCreate={createTicket}

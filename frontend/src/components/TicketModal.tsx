@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { X, Trash2 } from 'lucide-react';
 import type { Ticket, Column, Comment, TicketCreate, TicketUpdate } from '../types';
 import type { Config } from '../types';
@@ -8,6 +8,7 @@ interface Props {
   ticket?: Ticket | null;
   columns: Column[];
   config: Config;
+  currentUser?: { id: string; name: string };
   defaultStatus?: string;
   onClose: () => void;
   onCreate?: (data: TicketCreate) => Promise<Ticket>;
@@ -16,7 +17,7 @@ interface Props {
   onAddComment?: (id: string, body: string) => Promise<Comment>;
 }
 
-export function TicketModal({ ticket, columns, config, defaultStatus, onClose, onCreate, onUpdate, onDelete, onAddComment }: Props) {
+export function TicketModal({ ticket, columns, config, currentUser, defaultStatus, onClose, onCreate, onUpdate, onDelete, onAddComment }: Props) {
   const isEdit = !!ticket;
   const [title, setTitle] = useState(ticket?.title ?? '');
   const [description, setDescription] = useState(ticket?.description ?? '');
@@ -31,14 +32,25 @@ export function TicketModal({ ticket, columns, config, defaultStatus, onClose, o
   const toggleLabel = (l: string) =>
     setLabels(prev => prev.includes(l) ? prev.filter(x => x !== l) : [...prev, l]);
 
+  const saveAndClose = useCallback(async () => {
+    if (isEdit && onUpdate && title.trim()) {
+      setSaving(true);
+      try {
+        await onUpdate(ticket!.id, { title, description, assignee: assignee || null, priority, labels });
+      } finally {
+        setSaving(false);
+      }
+    }
+    onClose();
+  }, [isEdit, onUpdate, title, description, assignee, priority, labels, onClose, ticket]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
+    if (isEdit) { await saveAndClose(); return; }
     setSaving(true);
     try {
-      if (isEdit && onUpdate) {
-        await onUpdate(ticket!.id, { title, description, assignee: assignee || null, priority, labels });
-      } else if (onCreate) {
+      if (onCreate) {
         await onCreate({ title, description, status, assignee: assignee || null, priority, labels });
       }
       onClose();
@@ -56,10 +68,10 @@ export function TicketModal({ ticket, columns, config, defaultStatus, onClose, o
   };
 
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') saveAndClose(); };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [onClose]);
+  }, [saveAndClose]);
 
   const tabClass = (tab: 'details' | 'history') =>
     `px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
@@ -69,11 +81,11 @@ export function TicketModal({ ticket, columns, config, defaultStatus, onClose, o
     }`;
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" onClick={e => { if (e.target === e.currentTarget) saveAndClose(); }}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
           <h2 className="text-lg font-semibold text-gray-900">{isEdit ? `Edit ${ticket!.id}` : 'New Ticket'}</h2>
-          <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+          <button onClick={saveAndClose} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
             <X size={18} />
           </button>
         </div>
@@ -126,7 +138,18 @@ export function TicketModal({ ticket, columns, config, defaultStatus, onClose, o
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Assignee</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-gray-700">Assignee</label>
+                  {currentUser && assignee !== currentUser.id && (
+                    <button
+                      type="button"
+                      onClick={() => setAssignee(currentUser.id)}
+                      className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                    >
+                      Assign Me
+                    </button>
+                  )}
+                </div>
                 <select
                   value={assignee}
                   onChange={e => setAssignee(e.target.value)}
@@ -169,15 +192,6 @@ export function TicketModal({ ticket, columns, config, defaultStatus, onClose, o
               </div>
             </div>
 
-            {isEdit && onAddComment && (
-              <div className="border-t border-gray-100 pt-4">
-                <CommentThread
-                  comments={ticket!.comments}
-                  onAdd={(body) => onAddComment(ticket!.id, body)}
-                />
-              </div>
-            )}
-
             <div className="flex items-center justify-between pt-2 border-t border-gray-100">
               {isEdit ? (
                 <button
@@ -192,19 +206,32 @@ export function TicketModal({ ticket, columns, config, defaultStatus, onClose, o
                   <Trash2 size={14} />
                   {confirmDelete ? 'Confirm delete?' : 'Delete'}
                 </button>
-              ) : <div />}
-              <div className="flex gap-2">
-                <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
-                <button
-                  type="submit"
-                  disabled={!title.trim() || saving}
-                  className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
-                >
-                  {saving ? 'Saving…' : isEdit ? 'Save changes' : 'Create ticket'}
-                </button>
-              </div>
+              ) : (
+                <div />
+              )}
+              {!isEdit && (
+                <div className="flex gap-2">
+                  <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+                  <button
+                    type="submit"
+                    disabled={!title.trim() || saving}
+                    className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                  >
+                    {saving ? 'Saving…' : 'Create ticket'}
+                  </button>
+                </div>
+              )}
             </div>
           </form>
+        )}
+
+        {isEdit && onAddComment && activeTab === 'details' && (
+          <div className="px-6 pb-6 border-t border-gray-100 pt-4">
+            <CommentThread
+              comments={ticket!.comments}
+              onAdd={(body) => onAddComment(ticket!.id, body)}
+            />
+          </div>
         )}
 
         {isEdit && activeTab === 'history' && (
