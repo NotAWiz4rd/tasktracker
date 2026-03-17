@@ -1,9 +1,10 @@
 import { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import type { Comment } from '../types';
 
 interface Props {
   comments: Comment[];
-  onAdd: (body: string) => Promise<void>;
+  onAdd: (body: string) => Promise<unknown>;
 }
 
 function formatDate(iso: string) {
@@ -48,7 +49,9 @@ export function CommentThread({ comments, onAdd }: Props) {
                 <span className="text-xs font-semibold text-gray-700">{c.author}</span>
                 <span className="text-xs text-gray-400">{formatDate(c.created_at)}</span>
               </div>
-              <p className="text-sm text-gray-700 mt-0.5 whitespace-pre-wrap">{c.body}</p>
+              <div className="text-sm text-gray-700 mt-0.5 [&>p]:mb-1 [&>ul]:list-disc [&>ul]:pl-4 [&>ol]:list-decimal [&>ol]:pl-4 [&>code]:bg-gray-100 [&>code]:px-1 [&>code]:rounded">
+                <ReactMarkdown>{c.body}</ReactMarkdown>
+              </div>
             </div>
           </div>
         ))}

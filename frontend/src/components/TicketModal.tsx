@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, Trash2 } from 'lucide-react';
-import type { Ticket, Column, TicketCreate, TicketUpdate } from '../types';
+import type { Ticket, Column, Comment, TicketCreate, TicketUpdate } from '../types';
 import type { Config } from '../types';
 import { CommentThread } from './CommentThread';
 
@@ -10,10 +10,10 @@ interface Props {
   config: Config;
   defaultStatus?: string;
   onClose: () => void;
-  onCreate?: (data: TicketCreate) => Promise<void>;
-  onUpdate?: (id: string, data: TicketUpdate) => Promise<void>;
+  onCreate?: (data: TicketCreate) => Promise<Ticket>;
+  onUpdate?: (id: string, data: TicketUpdate) => Promise<Ticket>;
   onDelete?: (id: string) => Promise<void>;
-  onAddComment?: (id: string, body: string) => Promise<void>;
+  onAddComment?: (id: string, body: string) => Promise<Comment>;
 }
 
 export function TicketModal({ ticket, columns, config, defaultStatus, onClose, onCreate, onUpdate, onDelete, onAddComment }: Props) {
@@ -26,6 +26,7 @@ export function TicketModal({ ticket, columns, config, defaultStatus, onClose, o
   const [labels, setLabels] = useState<string[]>(ticket?.labels ?? []);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [activeTab, setActiveTab] = useState<'details' | 'history'>('details');
 
   const toggleLabel = (l: string) =>
     setLabels(prev => prev.includes(l) ? prev.filter(x => x !== l) : [...prev, l]);
@@ -60,6 +61,13 @@ export function TicketModal({ ticket, columns, config, defaultStatus, onClose, o
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
+  const tabClass = (tab: 'details' | 'history') =>
+    `px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+      activeTab === tab
+        ? 'border-indigo-600 text-indigo-600'
+        : 'border-transparent text-gray-500 hover:text-gray-700'
+    }`;
+
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -70,123 +78,153 @@ export function TicketModal({ ticket, columns, config, defaultStatus, onClose, o
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
-            <input
-              type="text"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              placeholder="Ticket title"
-              autoFocus
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
+        {isEdit && (
+          <div className="flex border-b border-gray-100 px-6">
+            <button className={tabClass('details')} onClick={() => setActiveTab('details')}>Details</button>
+            <button className={tabClass('history')} onClick={() => setActiveTab('history')}>History</button>
           </div>
+        )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder="Describe the ticket…"
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-            />
-          </div>
+        {(!isEdit || activeTab === 'details') && (
+          <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+              <input
+                type="text"
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                placeholder="Ticket title"
+                autoFocus
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            {!isEdit && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <textarea
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                placeholder="Describe the ticket…"
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {!isEdit && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Column</label>
+                  <select
+                    value={status}
+                    onChange={e => setStatus(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    {columns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+              )}
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Column</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Assignee</label>
                 <select
-                  value={status}
-                  onChange={e => setStatus(e.target.value)}
+                  value={assignee}
+                  onChange={e => setAssignee(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
-                  {columns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  <option value="">Unassigned</option>
+                  {config.users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                <select
+                  value={priority}
+                  onChange={e => setPriority(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  {config.priorities.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Labels</label>
+              <div className="flex flex-wrap gap-2">
+                {config.labels.map(l => (
+                  <button
+                    key={l}
+                    type="button"
+                    onClick={() => toggleLabel(l)}
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                      labels.includes(l)
+                        ? 'bg-indigo-600 text-white border-indigo-600'
+                        : 'bg-white text-gray-600 border-gray-300 hover:border-indigo-400'
+                    }`}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {isEdit && onAddComment && (
+              <div className="border-t border-gray-100 pt-4">
+                <CommentThread
+                  comments={ticket!.comments}
+                  onAdd={(body) => onAddComment(ticket!.id, body)}
+                />
               </div>
             )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Assignee</label>
-              <select
-                value={assignee}
-                onChange={e => setAssignee(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                <option value="">Unassigned</option>
-                {config.users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-              <select
-                value={priority}
-                onChange={e => setPriority(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                {config.priorities.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Labels</label>
-            <div className="flex flex-wrap gap-2">
-              {config.labels.map(l => (
+            <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+              {isEdit ? (
                 <button
-                  key={l}
                   type="button"
-                  onClick={() => toggleLabel(l)}
-                  className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                    labels.includes(l)
-                      ? 'bg-indigo-600 text-white border-indigo-600'
-                      : 'bg-white text-gray-600 border-gray-300 hover:border-indigo-400'
+                  onClick={handleDelete}
+                  className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition-colors ${
+                    confirmDelete
+                      ? 'bg-red-600 text-white hover:bg-red-700'
+                      : 'text-red-500 hover:bg-red-50'
                   }`}
                 >
-                  {l}
+                  <Trash2 size={14} />
+                  {confirmDelete ? 'Confirm delete?' : 'Delete'}
                 </button>
-              ))}
+              ) : <div />}
+              <div className="flex gap-2">
+                <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+                <button
+                  type="submit"
+                  disabled={!title.trim() || saving}
+                  className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {saving ? 'Saving…' : isEdit ? 'Save changes' : 'Create ticket'}
+                </button>
+              </div>
             </div>
-          </div>
+          </form>
+        )}
 
-          <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-            {isEdit ? (
-              <button
-                type="button"
-                onClick={handleDelete}
-                className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition-colors ${
-                  confirmDelete
-                    ? 'bg-red-600 text-white hover:bg-red-700'
-                    : 'text-red-500 hover:bg-red-50'
-                }`}
-              >
-                <Trash2 size={14} />
-                {confirmDelete ? 'Confirm delete?' : 'Delete'}
-              </button>
-            ) : <div />}
-            <div className="flex gap-2">
-              <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
-              <button
-                type="submit"
-                disabled={!title.trim() || saving}
-                className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
-              >
-                {saving ? 'Saving…' : isEdit ? 'Save changes' : 'Create ticket'}
-              </button>
-            </div>
-          </div>
-        </form>
-
-        {isEdit && onAddComment && (
-          <div className="px-6 pb-6 border-t border-gray-100 pt-4">
-            <CommentThread
-              comments={ticket!.comments}
-              onAdd={(body) => onAddComment(ticket!.id, body)}
-            />
+        {isEdit && activeTab === 'history' && (
+          <div className="px-6 pb-6 pt-4 space-y-3">
+            <h3 className="text-sm font-semibold text-gray-700">History</h3>
+            {(ticket?.history ?? []).length === 0 ? (
+              <p className="text-sm text-gray-400 italic">No history yet.</p>
+            ) : (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {[...(ticket?.history ?? [])].reverse().map((entry, i) => (
+                  <div key={i} className="flex gap-3 text-sm">
+                    <div className="text-xs text-gray-400 shrink-0 pt-0.5 w-32">{new Date(entry.at).toLocaleString()}</div>
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium text-gray-700">{entry.by}</span>
+                      <span className="text-gray-500 ml-1">{entry.change}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

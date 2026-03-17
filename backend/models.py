@@ -13,6 +13,12 @@ class Comment(BaseModel):
     created_at: datetime
 
 
+class HistoryEntry(BaseModel):
+    at: datetime
+    by: str
+    change: str
+
+
 class Ticket(BaseModel):
     id: str
     title: str
@@ -25,6 +31,7 @@ class Ticket(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     comments: list[Comment] = Field(default_factory=list)
+    history: list[HistoryEntry] = Field(default_factory=list)
 
 
 class TicketCreate(BaseModel):

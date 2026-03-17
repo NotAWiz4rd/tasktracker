@@ -10,6 +10,7 @@ from ..auth import get_current_user
 from ..models import (
     Comment,
     CommentCreate,
+    HistoryEntry,
     Ticket,
     TicketCreate,
     TicketMove,
@@ -32,6 +33,20 @@ def _valid_status(status_id: str) -> None:
     valid = {c["id"] for c in columns["columns"]}
     if status_id not in valid:
         raise HTTPException(status_code=422, detail=f"Invalid status: {status_id}")
+
+
+def _describe_update(old: dict, updates: dict) -> str:
+    parts = []
+    for key, new_val in updates.items():
+        old_val = old.get(key)
+        if old_val != new_val:
+            if key == "title":
+                parts.append("title updated")
+            elif key == "description":
+                parts.append("description updated")
+            else:
+                parts.append(f"{key}: {old_val} → {new_val}")
+    return "; ".join(parts) if parts else "updated"
 
 
 @router.get("")
@@ -79,6 +94,7 @@ def create_ticket(
         created_by=user,
         created_at=now,
         updated_at=now,
+        history=[HistoryEntry(at=now, by=user, change="created")],
     )
     tickets = store.read_json(store.TICKETS_PATH)
     tickets.append(ticket.model_dump(mode="json"))
@@ -100,13 +116,17 @@ def get_ticket(
 def update_ticket(
     ticket_id: str,
     body: TicketUpdate,
-    _user: Annotated[str, Depends(get_current_user)],
+    user: Annotated[str, Depends(get_current_user)],
 ) -> Ticket:
     tickets = store.read_json(store.TICKETS_PATH)
     idx, data = _find_ticket(tickets, ticket_id)
     updates = body.model_dump(exclude_none=True)
+    change_desc = _describe_update(data, updates)
     data.update(updates)
-    data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(timezone.utc)
+    data["updated_at"] = now.isoformat()
+    entry = HistoryEntry(at=now, by=user, change=change_desc)
+    data.setdefault("history", []).append(entry.model_dump(mode="json"))
     tickets[idx] = data
     store.write_json(store.TICKETS_PATH, tickets)
     return Ticket(**data)
@@ -131,14 +151,17 @@ def add_comment(
 ) -> Comment:
     tickets = store.read_json(store.TICKETS_PATH)
     idx, data = _find_ticket(tickets, ticket_id)
+    now = datetime.now(timezone.utc)
     comment = Comment(
         id=f"c-{uuid.uuid4().hex[:8]}",
         author=user,
         body=body.body,
-        created_at=datetime.now(timezone.utc),
+        created_at=now,
     )
     data.setdefault("comments", []).append(comment.model_dump(mode="json"))
-    data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    entry = HistoryEntry(at=now, by=user, change="commented")
+    data.setdefault("history", []).append(entry.model_dump(mode="json"))
+    data["updated_at"] = now.isoformat()
     tickets[idx] = data
     store.write_json(store.TICKETS_PATH, tickets)
     return comment
@@ -148,13 +171,17 @@ def add_comment(
 def move_ticket(
     ticket_id: str,
     body: TicketMove,
-    _user: Annotated[str, Depends(get_current_user)],
+    user: Annotated[str, Depends(get_current_user)],
 ) -> Ticket:
     _valid_status(body.status)
     tickets = store.read_json(store.TICKETS_PATH)
     idx, data = _find_ticket(tickets, ticket_id)
+    old_status = data.get("status", "")
+    now = datetime.now(timezone.utc)
+    entry = HistoryEntry(at=now, by=user, change=f"status: {old_status} → {body.status}")
     data["status"] = body.status
-    data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    data["updated_at"] = now.isoformat()
+    data.setdefault("history", []).append(entry.model_dump(mode="json"))
     tickets[idx] = data
     store.write_json(store.TICKETS_PATH, tickets)
     return Ticket(**data)

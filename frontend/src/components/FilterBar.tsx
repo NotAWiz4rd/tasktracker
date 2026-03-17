@@ -1,3 +1,5 @@
+import { useState, useEffect, useRef } from 'react';
+
 interface Props {
   users: { id: string; name: string }[];
   priorities: string[];
@@ -8,14 +10,31 @@ interface Props {
 
 export function FilterBar({ users, priorities, labels, filters, onChange }: Props) {
   const set = (key: string, val: string) => onChange({ ...filters, [key]: val });
+  const [searchInput, setSearchInput] = useState(filters.search);
+
+  const onChangeRef = useRef(onChange);
+  useEffect(() => { onChangeRef.current = onChange; });
+  const filtersRef = useRef(filters);
+  useEffect(() => { filtersRef.current = filters; });
+
+  // Sync local search when external filters change (e.g., clear button)
+  useEffect(() => { setSearchInput(filters.search); }, [filters.search]);
+
+  // Debounce the search update
+  useEffect(() => {
+    const t = setTimeout(() => {
+      onChangeRef.current({ ...filtersRef.current, search: searchInput });
+    }, 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   return (
     <div className="flex items-center gap-3 px-6 py-3 bg-white border-b border-gray-200 flex-wrap">
       <input
         type="text"
         placeholder="Search tickets…"
-        value={filters.search}
-        onChange={e => set('search', e.target.value)}
+        value={searchInput}
+        onChange={e => setSearchInput(e.target.value)}
         className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-48"
       />
       <select

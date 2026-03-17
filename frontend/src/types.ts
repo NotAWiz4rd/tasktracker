@@ -5,6 +5,12 @@ export interface Comment {
   created_at: string;
 }
 
+export interface HistoryEntry {
+  at: string;
+  by: string;
+  change: string;
+}
+
 export interface Ticket {
   id: string;
   title: string;
@@ -17,6 +23,7 @@ export interface Ticket {
   created_at: string;
   updated_at: string;
   comments: Comment[];
+  history: HistoryEntry[];
 }
 
 export interface Column {

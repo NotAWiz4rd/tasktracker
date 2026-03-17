@@ -1,3 +1,5 @@
+import type { Ticket, Comment, TicketCreate, TicketUpdate } from './types';
+
 const BASE = '';
 
 function getToken(): string | null {
@@ -42,12 +44,12 @@ export const api = {
   getColumns: () => request<{ columns: { id: string; name: string; order: number }[] }>('/api/columns'),
   getTickets: (params?: Record<string, string>) => {
     const qs = params ? '?' + new URLSearchParams(params).toString() : '';
-    return request<{ id: string; title: string; description: string; status: string; assignee: string | null; priority: string; labels: string[]; created_by: string; created_at: string; updated_at: string; comments: { id: string; author: string; body: string; created_at: string }[] }[]>(`/api/tickets${qs}`);
+    return request<Ticket[]>(`/api/tickets${qs}`);
   },
-  getTicket: (id: string) => request<any>(`/api/tickets/${id}`),
-  createTicket: (data: any) => request<any>('/api/tickets', { method: 'POST', body: JSON.stringify(data) }),
-  updateTicket: (id: string, data: any) => request<any>(`/api/tickets/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  getTicket: (id: string) => request<Ticket>(`/api/tickets/${id}`),
+  createTicket: (data: TicketCreate) => request<Ticket>('/api/tickets', { method: 'POST', body: JSON.stringify(data) }),
+  updateTicket: (id: string, data: Partial<TicketUpdate>) => request<Ticket>(`/api/tickets/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteTicket: (id: string) => request<void>(`/api/tickets/${id}`, { method: 'DELETE' }),
-  moveTicket: (id: string, status: string) => request<any>(`/api/tickets/${id}/move`, { method: 'PATCH', body: JSON.stringify({ status }) }),
-  addComment: (id: string, body: string) => request<any>(`/api/tickets/${id}/comments`, { method: 'POST', body: JSON.stringify({ body }) }),
+  moveTicket: (id: string, status: string) => request<Ticket>(`/api/tickets/${id}/move`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  addComment: (id: string, body: string) => request<Comment>(`/api/tickets/${id}/comments`, { method: 'POST', body: JSON.stringify({ body }) }),
 };

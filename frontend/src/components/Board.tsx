@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   DndContext,
   type DragEndEvent,
@@ -7,7 +7,7 @@ import {
   useSensors,
   closestCenter,
 } from '@dnd-kit/core';
-import type { Column as ColumnType, Ticket, Config } from '../types';
+import type { Column as ColumnType, Ticket, Comment, Config, TicketCreate, TicketUpdate } from '../types';
 import { Column } from './Column';
 import { TicketModal } from './TicketModal';
 import { FilterBar } from './FilterBar';
@@ -16,11 +16,11 @@ interface Props {
   columns: ColumnType[];
   config: Config;
   tickets: Ticket[];
-  onMove: (id: string, status: string) => Promise<void>;
-  onCreate: (data: any) => Promise<void>;
-  onUpdate: (id: string, data: any) => Promise<void>;
+  onMove: (id: string, status: string) => Promise<Ticket>;
+  onCreate: (data: TicketCreate) => Promise<Ticket>;
+  onUpdate: (id: string, data: TicketUpdate) => Promise<Ticket>;
   onDelete: (id: string) => Promise<void>;
-  onAddComment: (id: string, body: string) => Promise<void>;
+  onAddComment: (id: string, body: string) => Promise<Comment>;
 }
 
 export function Board({ columns, config, tickets, onMove, onCreate, onUpdate, onDelete, onAddComment }: Props) {
@@ -43,6 +43,21 @@ export function Board({ columns, config, tickets, onMove, onCreate, onUpdate, on
   }), [tickets, filters]);
 
   const sortedColumns = [...columns].sort((a, b) => a.order - b.order);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.key === 'n' || e.key === 'N') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const tag = (e.target as HTMLElement).tagName;
+        if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') {
+          if (!selectedTicketId && !newTicketStatus) {
+            setNewTicketStatus(sortedColumns[0]?.id ?? 'backlog');
+          }
+        }
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [selectedTicketId, newTicketStatus, sortedColumns]);
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
