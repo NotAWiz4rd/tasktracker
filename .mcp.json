@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "tasktracker": {
+      "command": "python",
+      "args": ["backend/mcp_server.py"],
+      "cwd": "/Users/mwerner/Projects/tasktracker"
+    }
+  }
+}
