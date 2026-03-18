@@ -39,16 +39,16 @@ export function LoginScreen({ onLogin }: Props) {
   const initials = (name: string) => name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">TaskTracker</h1>
-          <p className="text-gray-500 mt-2">Sign in to your account</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">TaskTracker</h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-2">Sign in to your account</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">Who are you?</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Who are you?</label>
             <div className="grid grid-cols-3 gap-3">
               {users.map(u => (
                 <button
@@ -57,8 +57,8 @@ export function LoginScreen({ onLogin }: Props) {
                   onClick={() => { setSelected(u.id); setPassword(''); setError(''); }}
                   className={`flex flex-col items-center p-3 rounded-xl border-2 transition-all ${
                     selected === u.id
-                      ? 'border-indigo-500 bg-indigo-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30'
+                      : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
                   }`}
                 >
                   <div
@@ -67,7 +67,7 @@ export function LoginScreen({ onLogin }: Props) {
                   >
                     {initials(u.name)}
                   </div>
-                  <span className="text-xs font-medium text-gray-700">{u.name}</span>
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{u.name}</span>
                 </button>
               ))}
             </div>
@@ -75,20 +75,20 @@ export function LoginScreen({ onLogin }: Props) {
 
           {selected && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
               <input
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="Enter password (default: 1234)"
                 autoFocus
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
             </div>
           )}
 
           {error && (
-            <p className="text-sm text-red-600">{error}</p>
+            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           )}
 
           <button

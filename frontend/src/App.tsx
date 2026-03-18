@@ -6,6 +6,7 @@ import { Header } from './components/Header';
 import { Board } from './components/Board';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastProvider } from './contexts/ToastContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { api } from './api';
 import type { Column, Config } from './types';
 
@@ -23,8 +24,8 @@ function AppInner() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-400">Loading…</div>
+      <div className="min-h-screen flex items-center justify-center dark:bg-gray-900">
+        <div className="text-gray-400 dark:text-gray-500">Loading…</div>
       </div>
     );
   }
@@ -34,10 +35,10 @@ function AppInner() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
       <Header user={user} onLogout={logout} />
       {pollingFailed && (
-        <div className="bg-yellow-100 border-b border-yellow-300 text-yellow-800 text-sm text-center py-2 px-4">
+        <div className="bg-yellow-100 dark:bg-yellow-900/30 border-b border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200 text-sm text-center py-2 px-4">
           Connection lost — showing cached data
         </div>
       )}
@@ -61,9 +62,11 @@ function AppInner() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <ToastProvider>
-        <AppInner />
-      </ToastProvider>
+      <ThemeProvider>
+        <ToastProvider>
+          <AppInner />
+        </ToastProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

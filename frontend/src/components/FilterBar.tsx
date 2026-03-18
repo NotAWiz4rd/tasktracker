@@ -28,19 +28,21 @@ export function FilterBar({ users, priorities, labels, filters, onChange }: Prop
     return () => clearTimeout(t);
   }, [searchInput]);
 
+  const inputClass = "px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200";
+
   return (
-    <div className="flex items-center gap-3 px-6 py-3 bg-white border-b border-gray-200 flex-wrap">
+    <div className="flex items-center gap-3 px-6 py-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex-wrap">
       <input
         type="text"
         placeholder="Search tickets…"
         value={searchInput}
         onChange={e => setSearchInput(e.target.value)}
-        className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-48"
+        className={`${inputClass} w-48`}
       />
       <select
         value={filters.assignee}
         onChange={e => set('assignee', e.target.value)}
-        className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        className={inputClass}
       >
         <option value="">All assignees</option>
         {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
@@ -48,7 +50,7 @@ export function FilterBar({ users, priorities, labels, filters, onChange }: Prop
       <select
         value={filters.priority}
         onChange={e => set('priority', e.target.value)}
-        className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        className={inputClass}
       >
         <option value="">All priorities</option>
         {priorities.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
@@ -56,7 +58,7 @@ export function FilterBar({ users, priorities, labels, filters, onChange }: Prop
       <select
         value={filters.label}
         onChange={e => set('label', e.target.value)}
-        className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        className={inputClass}
       >
         <option value="">All labels</option>
         {labels.map(l => <option key={l} value={l}>{l}</option>)}
@@ -64,7 +66,7 @@ export function FilterBar({ users, priorities, labels, filters, onChange }: Prop
       {(filters.assignee || filters.priority || filters.label || filters.search) && (
         <button
           onClick={() => onChange({ assignee: '', priority: '', label: '', search: '' })}
-          className="text-sm text-indigo-600 hover:underline"
+          className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
         >
           Clear filters
         </button>
