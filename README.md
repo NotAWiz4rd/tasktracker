@@ -1,13 +1,13 @@
 # TaskTracker
 
-A lightweight Kanban board for small teams, with a built-in MCP server so Claude Code can read and update tickets directly.
+A lightweight Kanban board with a built-in Knowledge Base and MCP server so Claude Code can read and update tickets directly.
 
 ## Components
 
 | Component | Purpose | Default port |
 |-----------|---------|-------------|
 | Backend   | FastAPI REST API, JSON file storage | 8000 |
-| Frontend  | React + TypeScript Kanban board (Vite) | 5173 |
+| Frontend  | React + TypeScript Kanban board + Knowledge Base (Vite) | 5173 |
 | MCP Server | Exposes board operations as MCP tools for Claude Code | 8001 |
 
 ---
@@ -125,15 +125,53 @@ If running the MCP server on a different machine, update the `url` in `.mcp.json
 
 ---
 
+## Knowledge Base
+
+TaskTracker includes a built-in Knowledge Base for storing and organizing team documentation as Markdown articles.
+
+### Features
+
+- **Hierarchical articles** — articles can have parent/child relationships forming a tree
+- **Markdown editing** — write in Markdown with a live preview toggle
+- **Tags** — tag articles for categorization
+- **Full-text search** — search across titles and content
+- **Authorship tracking** — created_by/updated_by with timestamps
+- **Keyboard shortcut** — Cmd/Ctrl+S to save
+
+### Data storage
+
+| File/Directory | Contents |
+|----------------|----------|
+| `data/kb/kb_index.json` | Article metadata (slug, title, tags, parent, timestamps) |
+| `data/kb/articles/{slug}.md` | Article content (one Markdown file per article) |
+
+### API endpoints
+
+All KB endpoints are under `/api/kb` and require authentication.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/kb` | List articles. Query params: `tag`, `search`, `parent` (`root` for top-level) |
+| `POST` | `/api/kb` | Create an article |
+| `GET` | `/api/kb/{slug}` | Fetch article with content and children |
+| `PATCH` | `/api/kb/{slug}` | Update article (title, content, tags, parent) |
+| `DELETE` | `/api/kb/{slug}` | Delete article (children are re-parented to root) |
+
+Slugs are auto-generated from the title (with collision suffixes like `-2`, `-3` if needed).
+
+---
+
 ## Data
 
-All state lives in three JSON files under `data/`:
+All state lives in files under `data/`:
 
 | File | Contents |
 |------|----------|
 | `tickets.json` | All tickets |
 | `columns.json` | Board column definitions |
 | `config.json` | Users, priorities, labels |
+| `kb/kb_index.json` | Knowledge Base article index |
+| `kb/articles/` | Knowledge Base article content (Markdown) |
 
 These files are read and written directly by both the backend and the MCP server. They are safe to inspect or edit by hand while the services are stopped.
 

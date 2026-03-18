@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from . import store
+from . import kb_store
 
 SEED_COLUMNS = {
     "columns": [
@@ -39,3 +40,5 @@ def seed_data() -> None:
 
     if not store.CONFIG_PATH.exists():
         store.write_json(store.CONFIG_PATH, SEED_CONFIG)
+
+    kb_store.ensure_kb_dirs()

@@ -29,6 +29,15 @@ from backend.store import (
     read_json,
     write_json,
 )
+from backend.kb_store import (
+    ensure_kb_dirs,
+    read_index as kb_read_index,
+    write_index as kb_write_index,
+    read_article_content,
+    write_article_content,
+    delete_article_file,
+    slugify,
+)
 
 AGENT_NAME = "agent:claude"
 
@@ -148,6 +157,76 @@ async def list_tools() -> list[types.Tool]:
             description="List all users available on the board.",
             inputSchema={"type": "object", "properties": {}},
         ),
+        # --- Knowledge Base ---
+        types.Tool(
+            name="list_articles",
+            description="List knowledge base articles (metadata only). Optionally filter by tag, search text, or parent slug.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "tag": {"type": "string", "description": "Filter by tag"},
+                    "search": {"type": "string", "description": "Search in title and content"},
+                    "parent": {"type": "string", "description": "Filter by parent slug, or 'root' for top-level articles"},
+                },
+            },
+        ),
+        types.Tool(
+            name="get_article",
+            description="Get a knowledge base article with its full markdown content and list of children.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "slug": {"type": "string", "description": "Article slug (e.g. getting-started)"},
+                },
+                "required": ["slug"],
+            },
+        ),
+        types.Tool(
+            name="create_article",
+            description="Create a new knowledge base article.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string", "description": "Article title"},
+                    "slug": {"type": "string", "description": "Custom slug (auto-generated from title if omitted)"},
+                    "content": {"type": "string", "description": "Markdown content"},
+                    "tags": {"type": "array", "items": {"type": "string"}, "description": "Tags for categorization"},
+                    "parent": {"type": "string", "description": "Parent article slug for nesting"},
+                },
+                "required": ["title"],
+            },
+        ),
+        types.Tool(
+            name="update_article",
+            description="Update an existing knowledge base article.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "slug": {"type": "string", "description": "Article slug"},
+                    "title": {"type": "string", "description": "New title"},
+                    "content": {"type": "string", "description": "New markdown content"},
+                    "tags": {"type": "array", "items": {"type": "string"}, "description": "New tags"},
+                    "parent": {"type": "string", "description": "New parent slug (null to make root-level)"},
+                },
+                "required": ["slug"],
+            },
+        ),
+        types.Tool(
+            name="delete_article",
+            description="Delete a knowledge base article. Children become root-level.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "slug": {"type": "string", "description": "Article slug to delete"},
+                },
+                "required": ["slug"],
+            },
+        ),
+        types.Tool(
+            name="get_kb_tree",
+            description="Get the full knowledge base tree structure (nested JSON) for navigation.",
+            inputSchema={"type": "object", "properties": {}},
+        ),
     ]
 
 
@@ -169,6 +248,18 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextCont
         return _tool_get_board_summary()
     elif name == "list_users":
         return _tool_list_users()
+    elif name == "list_articles":
+        return _tool_list_articles(arguments)
+    elif name == "get_article":
+        return _tool_get_article(arguments)
+    elif name == "create_article":
+        return _tool_create_article(arguments)
+    elif name == "update_article":
+        return _tool_update_article(arguments)
+    elif name == "delete_article":
+        return _tool_delete_article(arguments)
+    elif name == "get_kb_tree":
+        return _tool_get_kb_tree()
     else:
         raise ValueError(f"Unknown tool: {name}")
 
@@ -314,6 +405,181 @@ def _tool_list_users() -> list[types.TextContent]:
 
 
 # ---------------------------------------------------------------------------
+# KB Tool implementations
+# ---------------------------------------------------------------------------
+
+def _tool_list_articles(args: dict) -> list[types.TextContent]:
+    ensure_kb_dirs()
+    index = kb_read_index()
+
+    parent = args.get("parent")
+    tag = args.get("tag")
+    search = args.get("search", "").lower()
+
+    if parent is not None:
+        if parent == "root":
+            index = [a for a in index if a.get("parent") is None]
+        else:
+            index = [a for a in index if a.get("parent") == parent]
+
+    if tag:
+        index = [a for a in index if tag in a.get("tags", [])]
+
+    if search:
+        results = []
+        for a in index:
+            if search in a["title"].lower():
+                results.append(a)
+                continue
+            content = read_article_content(a["slug"])
+            if search in content.lower():
+                results.append(a)
+        index = results
+
+    return [types.TextContent(type="text", text=json.dumps(index, indent=2, default=str))]
+
+
+def _tool_get_article(args: dict) -> list[types.TextContent]:
+    ensure_kb_dirs()
+    slug = args["slug"]
+    index = kb_read_index()
+    meta = None
+    for a in index:
+        if a["slug"] == slug:
+            meta = a
+            break
+    if meta is None:
+        return [types.TextContent(type="text", text=f"Error: article {slug!r} not found")]
+
+    content = read_article_content(slug)
+    children = [a for a in index if a.get("parent") == slug]
+    result = {**meta, "content": content, "children": children}
+    return [types.TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
+
+
+def _tool_create_article(args: dict) -> list[types.TextContent]:
+    ensure_kb_dirs()
+    index = kb_read_index()
+
+    slug = args.get("slug") or slugify(args["title"])
+    if not slug:
+        return [types.TextContent(type="text", text="Error: could not generate slug from title")]
+
+    existing_slugs = {a["slug"] for a in index}
+    if slug in existing_slugs:
+        base = slug
+        counter = 2
+        while slug in existing_slugs:
+            slug = f"{base}-{counter}"
+            counter += 1
+
+    parent = args.get("parent")
+    if parent is not None and not any(a["slug"] == parent for a in index):
+        return [types.TextContent(type="text", text=f"Error: parent article {parent!r} not found")]
+
+    now = _now()
+    meta = {
+        "slug": slug,
+        "title": args["title"],
+        "parent": parent,
+        "tags": args.get("tags", []),
+        "created_by": AGENT_NAME,
+        "created_at": now,
+        "updated_by": AGENT_NAME,
+        "updated_at": now,
+    }
+
+    content = args.get("content", "")
+    write_article_content(slug, content)
+    index.append(meta)
+    kb_write_index(index)
+
+    result = {**meta, "content": content}
+    return [types.TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
+
+
+def _tool_update_article(args: dict) -> list[types.TextContent]:
+    ensure_kb_dirs()
+    slug = args["slug"]
+    index = kb_read_index()
+    meta = None
+    meta_idx = -1
+    for i, a in enumerate(index):
+        if a["slug"] == slug:
+            meta = a
+            meta_idx = i
+            break
+    if meta is None:
+        return [types.TextContent(type="text", text=f"Error: article {slug!r} not found")]
+
+    if "parent" in args:
+        new_parent = args["parent"]
+        if new_parent is not None:
+            if new_parent == slug:
+                return [types.TextContent(type="text", text="Error: an article cannot be its own parent")]
+            if not any(a["slug"] == new_parent for a in index):
+                return [types.TextContent(type="text", text=f"Error: parent article {new_parent!r} not found")]
+        meta["parent"] = new_parent
+
+    for field in ("title", "tags"):
+        if field in args:
+            meta[field] = args[field]
+
+    if "content" in args:
+        write_article_content(slug, args["content"])
+
+    meta["updated_by"] = AGENT_NAME
+    meta["updated_at"] = _now()
+    index[meta_idx] = meta
+    kb_write_index(index)
+
+    content = read_article_content(slug)
+    result = {**meta, "content": content}
+    return [types.TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
+
+
+def _tool_delete_article(args: dict) -> list[types.TextContent]:
+    ensure_kb_dirs()
+    slug = args["slug"]
+    index = kb_read_index()
+    original_count = len(index)
+
+    # Re-parent children
+    for a in index:
+        if a.get("parent") == slug:
+            a["parent"] = None
+
+    index = [a for a in index if a["slug"] != slug]
+    if len(index) == original_count:
+        return [types.TextContent(type="text", text=f"Error: article {slug!r} not found")]
+
+    kb_write_index(index)
+    delete_article_file(slug)
+    return [types.TextContent(type="text", text=f"Deleted article {slug}")]
+
+
+def _tool_get_kb_tree() -> list[types.TextContent]:
+    ensure_kb_dirs()
+    index = kb_read_index()
+
+    # Build tree
+    by_slug: dict[str, dict] = {}
+    for a in index:
+        by_slug[a["slug"]] = {**a, "children": []}
+
+    roots: list[dict] = []
+    for a in index:
+        node = by_slug[a["slug"]]
+        parent_slug = a.get("parent")
+        if parent_slug and parent_slug in by_slug:
+            by_slug[parent_slug]["children"].append(node)
+        else:
+            roots.append(node)
+
+    return [types.TextContent(type="text", text=json.dumps(roots, indent=2, default=str))]
+
+
+# ---------------------------------------------------------------------------
 # Resources
 # ---------------------------------------------------------------------------
 
@@ -332,6 +598,12 @@ async def list_resources() -> list[types.Resource]:
             description="All tickets as a JSON array",
             mimeType="application/json",
         ),
+        types.Resource(
+            uri="tasktracker://kb",
+            name="Knowledge Base Index",
+            description="All KB article metadata as a JSON array",
+            mimeType="application/json",
+        ),
     ]
 
 
@@ -342,6 +614,12 @@ async def list_resource_templates() -> list[types.ResourceTemplate]:
             uriTemplate="tasktracker://ticket/{id}",
             name="Single Ticket",
             description="A single ticket with all its comments",
+            mimeType="application/json",
+        ),
+        types.ResourceTemplate(
+            uriTemplate="tasktracker://kb/{slug}",
+            name="KB Article",
+            description="A single knowledge base article with content",
             mimeType="application/json",
         ),
     ]
@@ -377,6 +655,27 @@ async def read_resource(uri: types.AnyUrl) -> str:
         if ticket is None:
             raise ValueError(f"Ticket {ticket_id!r} not found")
         return json.dumps(ticket, indent=2, default=str)
+
+    if uri_str == "tasktracker://kb":
+        ensure_kb_dirs()
+        index = kb_read_index()
+        return json.dumps(index, indent=2, default=str)
+
+    if uri_str.startswith("tasktracker://kb/"):
+        slug = uri_str.removeprefix("tasktracker://kb/")
+        ensure_kb_dirs()
+        index = kb_read_index()
+        meta = None
+        for a in index:
+            if a["slug"] == slug:
+                meta = a
+                break
+        if meta is None:
+            raise ValueError(f"Article {slug!r} not found")
+        content = read_article_content(slug)
+        children = [a for a in index if a.get("parent") == slug]
+        result = {**meta, "content": content, "children": children}
+        return json.dumps(result, indent=2, default=str)
 
     raise ValueError(f"Unknown resource URI: {uri_str}")
 

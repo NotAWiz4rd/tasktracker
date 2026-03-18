@@ -60,3 +60,40 @@ export interface TicketUpdate {
   priority?: string;
   labels?: string[];
 }
+
+// --- Knowledge Base ---
+
+export interface Article {
+  slug: string;
+  title: string;
+  parent: string | null;
+  tags: string[];
+  created_by: string;
+  created_at: string;
+  updated_by: string;
+  updated_at: string;
+}
+
+export interface ArticleWithContent extends Article {
+  content: string;
+  children: Article[];
+}
+
+export interface ArticleCreate {
+  title: string;
+  slug?: string;
+  content?: string;
+  tags?: string[];
+  parent?: string | null;
+}
+
+export interface ArticleUpdate {
+  title?: string;
+  content?: string;
+  tags?: string[];
+  parent?: string | null;
+}
+
+export interface ArticleTreeNode extends Article {
+  children: ArticleTreeNode[];
+}

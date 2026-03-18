@@ -1,4 +1,4 @@
-import type { Ticket, Comment, TicketCreate, TicketUpdate } from './types';
+import type { Ticket, Comment, TicketCreate, TicketUpdate, Article, ArticleWithContent, ArticleCreate, ArticleUpdate, ArticleTreeNode } from './types';
 
 const BASE = '';
 
@@ -52,4 +52,15 @@ export const api = {
   deleteTicket: (id: string) => request<void>(`/api/tickets/${id}`, { method: 'DELETE' }),
   moveTicket: (id: string, status: string) => request<Ticket>(`/api/tickets/${id}/move`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   addComment: (id: string, body: string) => request<Comment>(`/api/tickets/${id}/comments`, { method: 'POST', body: JSON.stringify({ body }) }),
+
+  // Knowledge Base
+  getArticles: (params?: Record<string, string>) => {
+    const qs = params ? '?' + new URLSearchParams(params).toString() : '';
+    return request<Article[]>(`/api/kb${qs}`);
+  },
+  getArticle: (slug: string) => request<ArticleWithContent>(`/api/kb/${slug}`),
+  createArticle: (data: ArticleCreate) => request<ArticleWithContent>('/api/kb', { method: 'POST', body: JSON.stringify(data) }),
+  updateArticle: (slug: string, data: ArticleUpdate) => request<ArticleWithContent>(`/api/kb/${slug}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteArticle: (slug: string) => request<void>(`/api/kb/${slug}`, { method: 'DELETE' }),
+  getKbTree: () => request<ArticleTreeNode[]>('/api/kb/tree'),
 };

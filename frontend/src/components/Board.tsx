@@ -22,10 +22,11 @@ interface Props {
   onUpdate: (id: string, data: TicketUpdate) => Promise<Ticket>;
   onDelete: (id: string) => Promise<void>;
   onAddComment: (id: string, body: string) => Promise<Comment>;
+  selectedTicketId: string | null;
+  onTicketSelect: (id: string | null) => void;
 }
 
-export function Board({ columns, config, currentUser, tickets, onMove, onCreate, onUpdate, onDelete, onAddComment }: Props) {
-  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+export function Board({ columns, config, currentUser, tickets, onMove, onCreate, onUpdate, onDelete, onAddComment, selectedTicketId, onTicketSelect }: Props) {
   const [newTicketStatus, setNewTicketStatus] = useState<string | null>(null);
   const selectedTicket = selectedTicketId ? (tickets.find(t => t.id === selectedTicketId) ?? null) : null;
   const [filters, setFilters] = useState({ assignee: '', priority: '', label: '', search: '' });
@@ -90,7 +91,7 @@ export function Board({ columns, config, currentUser, tickets, onMove, onCreate,
               column={col}
               tickets={filteredTickets.filter(t => t.status === col.id)}
               users={config.users}
-              onTicketClick={t => setSelectedTicketId(t.id)}
+              onTicketClick={t => onTicketSelect(t.id)}
               onAddTicket={status => setNewTicketStatus(status)}
             />
           ))}
@@ -103,7 +104,7 @@ export function Board({ columns, config, currentUser, tickets, onMove, onCreate,
           columns={sortedColumns}
           config={config}
           currentUser={currentUser}
-          onClose={() => setSelectedTicketId(null)}
+          onClose={() => onTicketSelect(null)}
           onUpdate={onUpdate}
           onDelete={onDelete}
           onAddComment={onAddComment}

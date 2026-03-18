@@ -109,3 +109,36 @@ class LoginRequest(BaseModel):
 class LoginResponse(BaseModel):
     token: str
     user: UserPublic
+
+
+# --- Knowledge Base ---
+
+class Article(BaseModel):
+    slug: str
+    title: str
+    parent: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    created_by: str = ""
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_by: str = ""
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ArticleWithContent(Article):
+    content: str = ""
+    children: list[Article] = Field(default_factory=list)
+
+
+class ArticleCreate(BaseModel):
+    title: str
+    slug: str | None = None
+    content: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    parent: str | None = None
+
+
+class ArticleUpdate(BaseModel):
+    title: str | None = None
+    content: str | None = None
+    tags: list[str] | None = None
+    parent: str | None = None

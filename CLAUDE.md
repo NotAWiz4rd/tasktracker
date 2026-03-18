@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-TaskTracker is a Kanban board application with three components:
+TaskTracker is a Kanban board application with a built-in Knowledge Base, backed by four components:
 - **Backend**: FastAPI REST API with JSON file-based storage
-- **Frontend**: React + TypeScript + Vite + Tailwind CSS kanban board
+- **Frontend**: React + TypeScript + Vite + Tailwind CSS kanban board + Knowledge Base
 - **MCP Server**: FastAPI-less MCP server — direct file access, SSE/HTTP transport
 
 ## Development Commands
@@ -44,20 +44,22 @@ To connect Claude Code to a remote instance, update the `url` in `.mcp.json` to 
 
 ### Tests (Backend)
 ```bash
-pytest                                  # All tests
-pytest tests/test_tickets.py -v        # Specific file
-pytest -k test_create_ticket           # Single test by name
+python -m pytest                                  # All tests
+python -m pytest tests/test_tickets.py -v        # Specific file
+python -m pytest -k test_create_ticket           # Single test by name
 ```
 
 ## Architecture
 
 ### Data Layer
-All state lives in three JSON files in `data/`:
+All state lives in files under `data/`:
 - `tickets.json` — ticket array
 - `columns.json` — board column definitions
 - `config.json` — users (with plaintext passwords), priorities, labels, `next_ticket_number` counter
+- `kb/kb_index.json` — Knowledge Base article metadata (slug, title, tags, parent, timestamps)
+- `kb/articles/{slug}.md` — Knowledge Base article content (one Markdown file per article)
 
-`backend/store.py` provides file-locked read/write. The MCP server imports this module directly — no HTTP round-trips to the backend API.
+`backend/store.py` provides file-locked read/write for tickets/columns/config. `backend/kb_store.py` provides the same for the Knowledge Base. The MCP server imports these modules directly — no HTTP round-trips to the backend API.
 
 ### Authentication
 JWT tokens with a hardcoded dev secret (`"tasktracker-dev-secret-key-min32"`). Users/passwords are in `data/config.json`. 72-hour token expiry. The MCP server bypasses auth and accesses `store.py` directly, identifying itself as `agent:claude`.
@@ -65,7 +67,8 @@ JWT tokens with a hardcoded dev secret (`"tasktracker-dev-secret-key-min32"`). U
 ### Frontend Data Flow
 - `useAuth()` — JWT login/logout, token in `localStorage`
 - `useTickets()` — polls every 5 seconds, owns all CRUD mutations
-- Both hooks are called from `App.tsx` and passed down as props
+- `useArticles()` — polls every 10 seconds, owns all KB CRUD mutations
+- All hooks are called from `App.tsx` and passed down as props
 - Filtered view is computed with `useMemo` client-side
 - `selectedTicketId` (string, not object) is tracked to stay in sync with polling
 
@@ -80,6 +83,16 @@ Uses `@dnd-kit` (PointerSensor, 8px activation, `closestCenter` collision). Drop
 - `GET/POST /api/tickets`, `GET/PATCH/DELETE /api/tickets/{id}`
 - `POST /api/tickets/{id}/comments`, `PATCH /api/tickets/{id}/move`
 - `GET /api/columns`, `GET /api/config`
+- `GET/POST /api/kb`, `GET/PATCH/DELETE /api/kb/{slug}`
+
+### Knowledge Base API
+`backend/routers/kb.py` — all endpoints require auth, prefix `/api/kb`.
+
+- `GET /api/kb` — list articles; query params: `tag`, `search` (title + content), `parent` (`root` for top-level or a slug)
+- `POST /api/kb` — create article; body: `{ title, slug?, content?, tags?, parent? }`; slug auto-generated from title with collision suffixes
+- `GET /api/kb/{slug}` — fetch article with content and children list
+- `PATCH /api/kb/{slug}` — update title, content, tags, or parent (cycle detection prevents invalid reparenting)
+- `DELETE /api/kb/{slug}` — delete article; orphaned children are re-parented to root
 
 ### MCP Server Architecture
 `backend/mcp_server.py` exposes all ticket operations as MCP tools. It runs as a standalone process and connects to Claude Code via SSE over HTTP (configured in `.mcp.json`).
@@ -94,4 +107,5 @@ Uses `@dnd-kit` (PointerSensor, 8px activation, `closestCenter` collision). Drop
 - Phase 1 (Backend API): complete
 - Phase 2 (Frontend): complete
 - Phase 3 (MCP Server): complete
-- Phase 4 (Polish): not started
+- Phase 4 (Knowledge Base): complete
+- Phase 5 (Polish): not started

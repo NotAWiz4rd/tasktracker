@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .auth import get_current_user, login
 from .models import ConfigFile, LoginRequest, LoginResponse, UserPublic
-from .routers import columns, config, tickets
+from .routers import columns, config, kb, tickets
 from .seed import seed_data
 from . import store
 
@@ -30,6 +30,7 @@ app.add_middleware(
 app.include_router(tickets.router)
 app.include_router(columns.router)
 app.include_router(config.router)
+app.include_router(kb.router)
 
 
 @app.post("/api/login", tags=["auth"])
