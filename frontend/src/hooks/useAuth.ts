@@ -5,6 +5,7 @@ export interface AuthUser {
   id: string;
   name: string;
   avatar_color: string;
+  preferences: { dark_mode: boolean; split_view: boolean };
 }
 
 export function useAuth() {

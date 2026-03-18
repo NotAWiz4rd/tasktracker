@@ -33,13 +33,18 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return res.json();
 }
 
+type UserPreferences = { dark_mode: boolean; split_view: boolean };
+type UserResponse = { id: string; name: string; avatar_color: string; preferences: UserPreferences };
+
 export const api = {
   login: (username: string, password: string) =>
-    request<{ token: string; user: { id: string; name: string; avatar_color: string } }>('/api/login', {
+    request<{ token: string; user: UserResponse }>('/api/login', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
     }),
-  me: () => request<{ id: string; name: string; avatar_color: string }>('/api/me'),
+  me: () => request<UserResponse>('/api/me'),
+  updatePreferences: (prefs: Partial<UserPreferences>) =>
+    request<UserResponse>('/api/me/preferences', { method: 'PATCH', body: JSON.stringify(prefs) }),
   getConfig: () => request<{ users: { id: string; name: string; avatar_color: string }[]; priorities: string[]; labels: string[] }>('/api/config'),
   getColumns: () => request<{ columns: { id: string; name: string; order: number }[] }>('/api/columns'),
   getTickets: (params?: Record<string, string>) => {

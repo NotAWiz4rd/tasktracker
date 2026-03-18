@@ -11,11 +11,12 @@ interface Props {
   onLogout: () => void;
   splitView: boolean;
   onSplitViewChange: (enabled: boolean) => void;
+  onThemeToggle: () => void;
 }
 
-export function Header({ user, view, onViewChange, onLogout, splitView, onSplitViewChange }: Props) {
+export function Header({ user, view, onViewChange, onLogout, splitView, onSplitViewChange, onThemeToggle }: Props) {
   const initials = user.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-  const { dark, toggle } = useTheme();
+  const { dark } = useTheme();
 
   const tabClass = (v: View) =>
     `flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-colors ${
@@ -59,7 +60,7 @@ export function Header({ user, view, onViewChange, onLogout, splitView, onSplitV
           <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{user.name}</span>
         </div>
         <button
-          onClick={toggle}
+          onClick={onThemeToggle}
           className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
           title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
         >

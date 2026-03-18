@@ -73,11 +73,22 @@ class ColumnsFile(BaseModel):
 
 # --- Config ---
 
+class UserPreferences(BaseModel):
+    dark_mode: bool = False
+    split_view: bool = False
+
+
+class UserPreferencesUpdate(BaseModel):
+    dark_mode: bool | None = None
+    split_view: bool | None = None
+
+
 class User(BaseModel):
     id: str
     name: str
     password: str
     avatar_color: str
+    preferences: UserPreferences = Field(default_factory=UserPreferences)
 
 
 class ConfigFile(BaseModel):
@@ -91,6 +102,7 @@ class UserPublic(BaseModel):
     id: str
     name: str
     avatar_color: str
+    preferences: UserPreferences = Field(default_factory=UserPreferences)
 
 
 class ConfigPublic(BaseModel):

@@ -4,13 +4,21 @@
       "id": "alice",
       "name": "Alice",
       "password": "1234",
-      "avatar_color": "#4F46E5"
+      "avatar_color": "#4F46E5",
+      "preferences": {
+        "dark_mode": false,
+        "split_view": false
+      }
     },
     {
       "id": "bob",
       "name": "Bob",
       "password": "1234",
-      "avatar_color": "#059669"
+      "avatar_color": "#059669",
+      "preferences": {
+        "dark_mode": false,
+        "split_view": false
+      }
     }
   ],
   "priorities": [

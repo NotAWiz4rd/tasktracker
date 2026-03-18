@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { useTickets } from './hooks/useTickets';
@@ -9,7 +9,7 @@ import { Board } from './components/Board';
 import { KnowledgeBase } from './components/KnowledgeBase';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastProvider } from './contexts/ToastContext';
-import { ThemeProvider } from './contexts/ThemeContext';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { api } from './api';
 import type { Column, Config } from './types';
 
@@ -21,6 +21,8 @@ function AppInner() {
   const [columns, setColumns] = useState<Column[]>([]);
   const [config, setConfig] = useState<Config>({ users: [], priorities: [], labels: [] });
   const [splitView, setSplitView] = useState(false);
+  const { dark, setDark } = useTheme();
+  const prefsApplied = useRef(false);
 
   const view: View = location.pathname.startsWith('/kb') ? 'kb' : 'board';
 
@@ -30,10 +32,30 @@ function AppInner() {
   const urlSlug = view === 'kb' && pathParts.length > 1 ? pathParts.slice(1).join('/') : null;
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      prefsApplied.current = false;
+      return;
+    }
     api.getColumns().then(r => setColumns(r.columns)).catch(console.error);
     api.getConfig().then(c => setConfig(c)).catch(console.error);
+    // Apply saved preferences once per login
+    if (!prefsApplied.current) {
+      prefsApplied.current = true;
+      setDark(user.preferences.dark_mode);
+      setSplitView(user.preferences.split_view);
+    }
   }, [user]);
+
+  const handleDarkToggle = () => {
+    const newDark = !dark;
+    setDark(newDark);
+    api.updatePreferences({ dark_mode: newDark }).catch(console.error);
+  };
+
+  const handleSplitViewChange = (val: boolean) => {
+    setSplitView(val);
+    api.updatePreferences({ split_view: val }).catch(console.error);
+  };
 
   if (authLoading) {
     return (
@@ -53,7 +75,7 @@ function AppInner() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
-      <Header user={user} view={view} onViewChange={handleViewChange} onLogout={logout} splitView={splitView} onSplitViewChange={setSplitView} />
+      <Header user={user} view={view} onViewChange={handleViewChange} onLogout={logout} splitView={splitView} onSplitViewChange={handleSplitViewChange} onThemeToggle={handleDarkToggle} />
       {pollingFailed && (view === 'board' || (splitView && view === 'kb')) && (
         <div className="bg-yellow-100 dark:bg-yellow-900/30 border-b border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200 text-sm text-center py-2 px-4">
           Connection lost — showing cached data
