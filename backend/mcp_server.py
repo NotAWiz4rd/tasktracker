@@ -184,7 +184,7 @@ def _tool_list_tickets(args: dict) -> list[types.TextContent]:
 
     results = []
     for t in tickets:
-        if status and t.get("status") != status:
+        if status and t.get("status", "").lower() != status.lower():
             continue
         if assignee and t.get("assignee") != assignee:
             continue
@@ -215,7 +215,7 @@ def _tool_create_ticket(args: dict) -> list[types.TextContent]:
         "id": ticket_id,
         "title": args["title"],
         "description": args.get("description", ""),
-        "status": args.get("status", "backlog"),
+        "status": args.get("status", "backlog").lower(),
         "assignee": args.get("assignee"),
         "priority": args.get("priority", "medium"),
         "labels": args.get("labels", []),
@@ -240,7 +240,8 @@ def _tool_update_ticket(args: dict) -> list[types.TextContent]:
     updatable = ("title", "description", "status", "assignee", "priority", "labels")
     for field in updatable:
         if field in args:
-            ticket[field] = args[field]
+            value = args[field]
+            ticket[field] = value.lower() if field == "status" else value
     ticket["updated_at"] = _now()
 
     write_json(TICKETS_PATH, tickets)

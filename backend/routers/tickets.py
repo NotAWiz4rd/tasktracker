@@ -28,11 +28,14 @@ def _find_ticket(tickets: list[dict], ticket_id: str) -> tuple[int, dict]:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Ticket {ticket_id} not found")
 
 
-def _valid_status(status_id: str) -> None:
+def _valid_status(status_id: str) -> str:
+    """Validate and return the normalized (lowercase) status id."""
+    normalized = status_id.lower()
     columns = store.read_json(store.COLUMNS_PATH)
     valid = {c["id"] for c in columns["columns"]}
-    if status_id not in valid:
+    if normalized not in valid:
         raise HTTPException(status_code=422, detail=f"Invalid status: {status_id}")
+    return normalized
 
 
 def _describe_update(old: dict, updates: dict) -> str:
@@ -60,7 +63,8 @@ def list_tickets(
 ) -> list[Ticket]:
     tickets = store.read_json(store.TICKETS_PATH)
     if status:
-        tickets = [t for t in tickets if t["status"] == status]
+        status_lower = status.lower()
+        tickets = [t for t in tickets if t["status"].lower() == status_lower]
     if assignee:
         tickets = [t for t in tickets if t.get("assignee") == assignee]
     if priority:
@@ -81,13 +85,13 @@ def create_ticket(
     body: TicketCreate,
     user: Annotated[str, Depends(get_current_user)],
 ) -> Ticket:
-    _valid_status(body.status)
+    normalized_status = _valid_status(body.status)
     now = datetime.now(timezone.utc)
     ticket = Ticket(
         id=store.next_ticket_id(),
         title=body.title,
         description=body.description,
-        status=body.status,
+        status=normalized_status,
         assignee=body.assignee,
         priority=body.priority,
         labels=body.labels,
@@ -173,13 +177,13 @@ def move_ticket(
     body: TicketMove,
     user: Annotated[str, Depends(get_current_user)],
 ) -> Ticket:
-    _valid_status(body.status)
+    normalized_status = _valid_status(body.status)
     tickets = store.read_json(store.TICKETS_PATH)
     idx, data = _find_ticket(tickets, ticket_id)
     old_status = data.get("status", "")
     now = datetime.now(timezone.utc)
-    entry = HistoryEntry(at=now, by=user, change=f"status: {old_status} → {body.status}")
-    data["status"] = body.status
+    entry = HistoryEntry(at=now, by=user, change=f"status: {old_status} → {normalized_status}")
+    data["status"] = normalized_status
     data["updated_at"] = now.isoformat()
     data.setdefault("history", []).append(entry.model_dump(mode="json"))
     tickets[idx] = data
