@@ -154,3 +154,16 @@ class ArticleUpdate(BaseModel):
     content: str | None = None
     tags: list[str] | None = None
     parent: str | None = None
+
+
+class SharedArticle(BaseModel):
+    slug: str
+    title: str
+    tags: list[str] = Field(default_factory=list)
+    updated_at: datetime
+    content: str = ""
+
+
+class SharedArticleResponse(BaseModel):
+    article: SharedArticle
+    children: list[SharedArticle] = Field(default_factory=list)

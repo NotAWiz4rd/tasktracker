@@ -1,4 +1,4 @@
-import type { Ticket, Comment, TicketCreate, TicketUpdate, Article, ArticleWithContent, ArticleCreate, ArticleUpdate, ArticleTreeNode } from './types';
+import type { Ticket, Comment, TicketCreate, TicketUpdate, Article, ArticleWithContent, ArticleCreate, ArticleUpdate, ArticleTreeNode, SharedArticleResponse } from './types';
 
 const BASE = '';
 
@@ -30,6 +30,15 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     throw new Error(text || res.statusText);
   }
   if (res.status === 204) return undefined as T;
+  return res.json();
+}
+
+async function publicRequest<T>(path: string): Promise<T> {
+  const res = await fetch(path, { headers: { 'Content-Type': 'application/json' } });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || res.statusText);
+  }
   return res.json();
 }
 
@@ -68,4 +77,9 @@ export const api = {
   updateArticle: (slug: string, data: ArticleUpdate) => request<ArticleWithContent>(`/api/kb/${slug}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteArticle: (slug: string) => request<void>(`/api/kb/${slug}`, { method: 'DELETE' }),
   getKbTree: () => request<ArticleTreeNode[]>('/api/kb/tree'),
+  getShareToken: (slug: string) => request<{ token: string }>(`/api/kb/${slug}/share-token`),
+  getSharedArticle: (slug: string, token: string, includeChildren = false): Promise<SharedArticleResponse> => {
+    const qs = includeChildren ? '?children=1' : '';
+    return publicRequest<SharedArticleResponse>(`/api/kb/share/${slug}/${token}${qs}`);
+  },
 };

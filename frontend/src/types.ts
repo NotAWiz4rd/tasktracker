@@ -97,3 +97,16 @@ export interface ArticleUpdate {
 export interface ArticleTreeNode extends Article {
   children: ArticleTreeNode[];
 }
+
+export interface SharedArticle {
+  slug: string;
+  title: string;
+  tags: string[];
+  updated_at: string;
+  content: string;
+}
+
+export interface SharedArticleResponse {
+  article: SharedArticle;
+  children: SharedArticle[];
+}

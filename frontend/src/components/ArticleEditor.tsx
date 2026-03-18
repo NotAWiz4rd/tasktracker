@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Save, Trash2, Eye, Edit2, Plus } from 'lucide-react';
+import { Save, Trash2, Eye, Edit2, Plus, Share2, X, Copy } from 'lucide-react';
 import type { ArticleWithContent, Article, ArticleCreate, ArticleUpdate } from '../types';
+import { api } from '../api';
 
 interface Props {
   article: ArticleWithContent | null;
@@ -24,6 +25,11 @@ export function ArticleEditor({ article, articles, isNew, defaultParent, onSave,
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [includeChildren, setIncludeChildren] = useState(false);
+  const [shareLink, setShareLink] = useState<string | null>(null);
+  const [copyLabel, setCopyLabel] = useState('Generate Link');
+  const [shareError, setShareError] = useState<string | null>(null);
 
   // Track the "source" to know when we should reset
   const sourceKey = isNew ? `new:${defaultParent ?? ''}` : (article?.slug ?? '');
@@ -180,6 +186,14 @@ export function ArticleEditor({ article, articles, isNew, defaultParent, onSave,
               <Plus size={12} /> Add child
             </button>
           )}
+          {!isNew && article && (
+            <button
+              onClick={() => { setShareOpen(true); setShareLink(null); setCopyLabel('Generate Link'); setShareError(null); }}
+              className="flex items-center gap-1 px-2 py-1 text-xs text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+            >
+              <Share2 size={12} /> Share
+            </button>
+          )}
         </div>
 
         {preview ? (
@@ -245,6 +259,98 @@ export function ArticleEditor({ article, articles, isNew, defaultParent, onSave,
           </span>
         )}
       </div>
+
+      {/* Share modal */}
+      {shareOpen && article && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShareOpen(false)}>
+          <div
+            className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-5 space-y-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Share Article</h2>
+              <button onClick={() => setShareOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                <X size={16} />
+              </button>
+            </div>
+
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={includeChildren}
+                onChange={e => { setIncludeChildren(e.target.checked); setShareLink(null); setCopyLabel('Generate Link'); }}
+                disabled={article.children.length === 0}
+                className="rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500 disabled:opacity-40"
+              />
+              <span className={`text-sm ${article.children.length === 0 ? 'text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300'}`}>
+                Include child pages
+                {article.children.length === 0 && <span className="ml-1 text-xs">(none)</span>}
+              </span>
+            </label>
+
+            {shareError && (
+              <p className="text-xs text-red-500 dark:text-red-400">{shareError}</p>
+            )}
+
+            {shareLink && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={shareLink}
+                  onClick={e => (e.target as HTMLInputElement).select()}
+                  className="flex-1 text-xs px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(shareLink);
+                    setCopyLabel('Copied!');
+                    setTimeout(() => setCopyLabel('Copy'), 1500);
+                  }}
+                  className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  title="Copy to clipboard"
+                >
+                  <Copy size={14} />
+                </button>
+              </div>
+            )}
+
+            <button
+              onClick={async () => {
+                if (shareLink) {
+                  navigator.clipboard.writeText(shareLink);
+                  setCopyLabel('Copied!');
+                  setTimeout(() => setCopyLabel('Copy'), 1500);
+                  return;
+                }
+                // Initiate the clipboard write synchronously (required for user-gesture
+                // permission) while the token fetch resolves asynchronously via ClipboardItem.
+                try {
+                  const slug = article.slug;
+                  await navigator.clipboard.write([
+                    new ClipboardItem({
+                      'text/plain': api.getShareToken(slug).then(({ token }) => {
+                        const qs = includeChildren ? '?children=1' : '';
+                        const url = `${window.location.origin}/share/${slug}/${token}${qs}`;
+                        setShareLink(url);
+                        return new Blob([url], { type: 'text/plain' });
+                      }),
+                    }),
+                  ]);
+                  setCopyLabel('Copied!');
+                  setTimeout(() => setCopyLabel('Copy'), 1500);
+                } catch {
+                  setShareError('Failed to generate link. Please try again.');
+                }
+              }}
+              className="w-full flex items-center justify-center gap-1.5 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              <Share2 size={14} />
+              {copyLabel}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

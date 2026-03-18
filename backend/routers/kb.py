@@ -5,8 +5,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from ..auth import get_current_user
-from ..models import Article, ArticleCreate, ArticleUpdate, ArticleWithContent
+from ..auth import get_current_user, generate_share_token, verify_share_token
+from ..models import Article, ArticleCreate, ArticleUpdate, ArticleWithContent, SharedArticle, SharedArticleResponse
 from .. import kb_store
 
 router = APIRouter(prefix="/api/kb", tags=["knowledge-base"])
@@ -106,6 +106,47 @@ def create_article(
     kb_store.write_index(index)
 
     return ArticleWithContent(**article_meta, content=content)
+
+
+@router.get("/{slug}/share-token")
+def get_share_token(
+    slug: str,
+    _user: Annotated[str, Depends(get_current_user)],
+) -> dict:
+    index = kb_store.read_index()
+    _find_article(index, slug)  # 404 if missing
+    return {"token": generate_share_token(slug)}
+
+
+@router.get("/share/{slug}/{token}")
+def get_shared_article(
+    slug: str,
+    token: str,
+    children: bool = Query(False),
+) -> SharedArticleResponse:
+    if not verify_share_token(slug, token):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid share link")
+    index = kb_store.read_index()
+    _, meta = _find_article(index, slug)
+    content = kb_store.read_article_content(slug)
+    article = SharedArticle(**{k: meta[k] for k in ("slug", "title", "tags", "updated_at")}, content=content)
+
+    child_articles: list[SharedArticle] = []
+    if children:
+        queue = [slug]
+        visited = {slug}
+        while queue:
+            current = queue.pop(0)
+            for a in index:
+                if a.get("parent") == current and a["slug"] not in visited:
+                    visited.add(a["slug"])
+                    queue.append(a["slug"])
+                    child_content = kb_store.read_article_content(a["slug"])
+                    child_articles.append(
+                        SharedArticle(**{k: a[k] for k in ("slug", "title", "tags", "updated_at")}, content=child_content)
+                    )
+
+    return SharedArticleResponse(article=article, children=child_articles)
 
 
 @router.get("/{slug}")

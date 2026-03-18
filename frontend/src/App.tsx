@@ -8,6 +8,7 @@ import type { View } from './components/Header';
 import { Board } from './components/Board';
 import { KnowledgeBase } from './components/KnowledgeBase';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { SharedArticleView } from './components/SharedArticleView';
 import { ToastProvider } from './contexts/ToastContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { api } from './api';
@@ -141,6 +142,7 @@ export default function App() {
       <ThemeProvider>
         <ToastProvider>
           <Routes>
+            <Route path="/share/:slug/:token" element={<SharedArticleView />} />
             <Route path="/" element={<Navigate to="/board" replace />} />
             <Route path="/*" element={<AppInner />} />
           </Routes>
