@@ -1,5 +1,5 @@
 import type { AuthUser } from '../hooks/useAuth';
-import { LogOut, Moon, Sun, LayoutDashboard, BookOpen } from 'lucide-react';
+import { LogOut, Moon, Sun, LayoutDashboard, BookOpen, Columns2 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 export type View = 'board' | 'kb';
@@ -9,9 +9,11 @@ interface Props {
   view: View;
   onViewChange: (view: View) => void;
   onLogout: () => void;
+  splitView: boolean;
+  onSplitViewChange: (enabled: boolean) => void;
 }
 
-export function Header({ user, view, onViewChange, onLogout }: Props) {
+export function Header({ user, view, onViewChange, onLogout, splitView, onSplitViewChange }: Props) {
   const initials = user.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
   const { dark, toggle } = useTheme();
 
@@ -36,6 +38,17 @@ export function Header({ user, view, onViewChange, onLogout }: Props) {
         </nav>
       </div>
       <div className="flex items-center gap-3">
+        <button
+          onClick={() => onSplitViewChange(!splitView)}
+          className={`p-1.5 rounded-lg transition-colors ${
+            splitView
+              ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/40 hover:bg-indigo-200 dark:hover:bg-indigo-900/60'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
+          }`}
+          title={splitView ? 'Disable split view' : 'Enable split view'}
+        >
+          <Columns2 size={16} />
+        </button>
         <div className="flex items-center gap-2">
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold"

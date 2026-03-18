@@ -20,6 +20,7 @@ function AppInner() {
   const { tickets, pollingFailed, createTicket, updateTicket, deleteTicket, moveTicket, addComment } = useTickets(!!user);
   const [columns, setColumns] = useState<Column[]>([]);
   const [config, setConfig] = useState<Config>({ users: [], priorities: [], labels: [] });
+  const [splitView, setSplitView] = useState(false);
 
   const view: View = location.pathname.startsWith('/kb') ? 'kb' : 'board';
 
@@ -52,32 +53,60 @@ function AppInner() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
-      <Header user={user} view={view} onViewChange={handleViewChange} onLogout={logout} />
-      {pollingFailed && view === 'board' && (
+      <Header user={user} view={view} onViewChange={handleViewChange} onLogout={logout} splitView={splitView} onSplitViewChange={setSplitView} />
+      {pollingFailed && (view === 'board' || (splitView && view === 'kb')) && (
         <div className="bg-yellow-100 dark:bg-yellow-900/30 border-b border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200 text-sm text-center py-2 px-4">
           Connection lost — showing cached data
         </div>
       )}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {view === 'board' ? (
-          <Board
-            columns={columns}
-            config={config}
-            currentUser={user ?? undefined}
-            tickets={tickets}
-            onMove={moveTicket}
-            onCreate={createTicket}
-            onUpdate={updateTicket}
-            onDelete={deleteTicket}
-            onAddComment={addComment}
-            selectedTicketId={urlTicketId}
-            onTicketSelect={handleTicketSelect}
-          />
-        ) : (
-          <KnowledgeBase
-            initialSlug={urlSlug}
-            onArticleSelect={handleArticleSelect}
-          />
+      <div className="flex-1 flex overflow-hidden">
+        {/* Primary pane */}
+        <div className={`flex flex-col overflow-hidden ${splitView ? 'w-1/2 border-r border-gray-200 dark:border-gray-700' : 'flex-1'}`}>
+          {view === 'board' ? (
+            <Board
+              columns={columns}
+              config={config}
+              currentUser={user ?? undefined}
+              tickets={tickets}
+              onMove={moveTicket}
+              onCreate={createTicket}
+              onUpdate={updateTicket}
+              onDelete={deleteTicket}
+              onAddComment={addComment}
+              selectedTicketId={urlTicketId}
+              onTicketSelect={handleTicketSelect}
+            />
+          ) : (
+            <KnowledgeBase
+              initialSlug={urlSlug}
+              onArticleSelect={handleArticleSelect}
+            />
+          )}
+        </div>
+        {/* Secondary pane — only shown in split view */}
+        {splitView && (
+          <div className="w-1/2 flex flex-col overflow-hidden">
+            {view === 'board' ? (
+              <KnowledgeBase
+                initialSlug={null}
+                onArticleSelect={() => {}}
+              />
+            ) : (
+              <Board
+                columns={columns}
+                config={config}
+                currentUser={user ?? undefined}
+                tickets={tickets}
+                onMove={moveTicket}
+                onCreate={createTicket}
+                onUpdate={updateTicket}
+                onDelete={deleteTicket}
+                onAddComment={addComment}
+                selectedTicketId={null}
+                onTicketSelect={() => {}}
+              />
+            )}
+          </div>
         )}
       </div>
     </div>
