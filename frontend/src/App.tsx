@@ -18,7 +18,7 @@ function AppInner() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, loading: authLoading, login, logout } = useAuth();
-  const { tickets, pollingFailed, createTicket, updateTicket, deleteTicket, moveTicket, addComment } = useTickets(!!user);
+  const { tickets, pollingFailed, createTicket, updateTicket, deleteTicket, moveTicket, reorderTickets, addComment } = useTickets(!!user);
   const [columns, setColumns] = useState<Column[]>([]);
   const [config, setConfig] = useState<Config>({ users: [], priorities: [], labels: [] });
   const [splitView, setSplitView] = useState(false);
@@ -92,6 +92,7 @@ function AppInner() {
               currentUser={user ?? undefined}
               tickets={tickets}
               onMove={moveTicket}
+              onReorder={reorderTickets}
               onCreate={createTicket}
               onUpdate={updateTicket}
               onDelete={deleteTicket}
@@ -121,6 +122,7 @@ function AppInner() {
                 currentUser={user ?? undefined}
                 tickets={tickets}
                 onMove={moveTicket}
+                onReorder={reorderTickets}
                 onCreate={createTicket}
                 onUpdate={updateTicket}
                 onDelete={deleteTicket}

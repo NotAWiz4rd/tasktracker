@@ -55,6 +55,11 @@ class TicketMove(BaseModel):
     status: str
 
 
+class TicketReorder(BaseModel):
+    status: str
+    ids: list[str]
+
+
 class CommentCreate(BaseModel):
     body: str
 

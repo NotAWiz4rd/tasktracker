@@ -79,11 +79,26 @@ export function useTickets(enabled = true) {
     }
   };
 
+  const reorderTickets = async (status: string, ids: string[]) => {
+    // Optimistic update: reorder local state immediately
+    setTickets(prev => {
+      const reordered = ids.map(id => prev.find(t => t.id === id)).filter(Boolean) as Ticket[];
+      const others = prev.filter(t => t.status !== status);
+      return [...reordered, ...others];
+    });
+    try {
+      await api.reorderTickets(status, ids);
+    } catch (e) {
+      showToast('Failed to reorder tickets');
+      fetchTickets(); // revert by re-fetching
+    }
+  };
+
   const addComment = async (id: string, body: string) => {
     const comment = await api.addComment(id, body);
     setTickets(prev => prev.map(x => x.id === id ? { ...x, comments: [...x.comments, comment] } : x));
     return comment;
   };
 
-  return { tickets, loading, pollingFailed, refresh: fetchTickets, createTicket, updateTicket, deleteTicket, moveTicket, addComment };
+  return { tickets, loading, pollingFailed, refresh: fetchTickets, createTicket, updateTicket, deleteTicket, moveTicket, reorderTickets, addComment };
 }

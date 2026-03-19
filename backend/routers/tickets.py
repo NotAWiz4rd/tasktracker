@@ -14,6 +14,7 @@ from ..models import (
     Ticket,
     TicketCreate,
     TicketMove,
+    TicketReorder,
     TicketUpdate,
 )
 from .. import store
@@ -169,6 +170,19 @@ def add_comment(
     tickets[idx] = data
     store.write_json(store.TICKETS_PATH, tickets)
     return comment
+
+
+@router.post("/reorder", status_code=status.HTTP_204_NO_CONTENT)
+def reorder_tickets(
+    body: TicketReorder,
+    _user: Annotated[str, Depends(get_current_user)],
+) -> None:
+    normalized_status = _valid_status(body.status)
+    tickets = store.read_json(store.TICKETS_PATH)
+    id_to_ticket = {t["id"]: t for t in tickets}
+    reordered = [id_to_ticket[i] for i in body.ids if i in id_to_ticket and id_to_ticket[i].get("status") == normalized_status]
+    others = [t for t in tickets if t.get("status") != normalized_status]
+    store.write_json(store.TICKETS_PATH, reordered + others)
 
 
 @router.patch("/{ticket_id}/move")

@@ -65,6 +65,7 @@ export const api = {
   updateTicket: (id: string, data: Partial<TicketUpdate>) => request<Ticket>(`/api/tickets/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteTicket: (id: string) => request<void>(`/api/tickets/${id}`, { method: 'DELETE' }),
   moveTicket: (id: string, status: string) => request<Ticket>(`/api/tickets/${id}/move`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  reorderTickets: (status: string, ids: string[]) => request<void>('/api/tickets/reorder', { method: 'POST', body: JSON.stringify({ status, ids }) }),
   addComment: (id: string, body: string) => request<Comment>(`/api/tickets/${id}/comments`, { method: 'POST', body: JSON.stringify({ body }) }),
 
   // Knowledge Base

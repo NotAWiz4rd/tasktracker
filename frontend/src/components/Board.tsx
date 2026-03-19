@@ -7,6 +7,7 @@ import {
   useSensors,
   closestCenter,
 } from '@dnd-kit/core';
+import { arrayMove } from '@dnd-kit/sortable';
 import type { Column as ColumnType, Ticket, Comment, Config, TicketCreate, TicketUpdate } from '../types';
 import { Column } from './Column';
 import { TicketModal } from './TicketModal';
@@ -18,6 +19,7 @@ interface Props {
   currentUser?: { id: string; name: string };
   tickets: Ticket[];
   onMove: (id: string, status: string) => Promise<Ticket>;
+  onReorder: (status: string, ids: string[]) => Promise<void>;
   onCreate: (data: TicketCreate) => Promise<Ticket>;
   onUpdate: (id: string, data: TicketUpdate) => Promise<Ticket>;
   onDelete: (id: string) => Promise<void>;
@@ -26,7 +28,7 @@ interface Props {
   onTicketSelect: (id: string | null) => void;
 }
 
-export function Board({ columns, config, currentUser, tickets, onMove, onCreate, onUpdate, onDelete, onAddComment, selectedTicketId, onTicketSelect }: Props) {
+export function Board({ columns, config, currentUser, tickets, onMove, onReorder, onCreate, onUpdate, onDelete, onAddComment, selectedTicketId, onTicketSelect }: Props) {
   const [newTicketStatus, setNewTicketStatus] = useState<string | null>(null);
   const selectedTicket = selectedTicketId ? (tickets.find(t => t.id === selectedTicketId) ?? null) : null;
   const [filters, setFilters] = useState({ assignee: '', priority: '', label: '', search: '' });
@@ -63,14 +65,24 @@ export function Board({ columns, config, currentUser, tickets, onMove, onCreate,
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
-    if (!over) return;
+    if (!over || active.id === over.id) return;
     const ticket = tickets.find(t => t.id === active.id);
     if (!ticket) return;
-    // over.id could be a column id or a ticket id — find the column
+    // over.id could be a column id or a ticket id — find the target status
     const targetColumn = sortedColumns.find(c => c.id === over.id);
     const targetStatus = targetColumn?.id ?? tickets.find(t => t.id === over.id)?.status;
-    if (targetStatus && targetStatus !== ticket.status) {
+    if (!targetStatus) return;
+    if (targetStatus !== ticket.status) {
       await onMove(ticket.id, targetStatus);
+    } else {
+      // Same-column reorder
+      const columnTickets = filteredTickets.filter(t => t.status === ticket.status);
+      const oldIndex = columnTickets.findIndex(t => t.id === active.id);
+      const newIndex = columnTickets.findIndex(t => t.id === over.id);
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const reordered = arrayMove(columnTickets, oldIndex, newIndex);
+        await onReorder(ticket.status, reordered.map(t => t.id));
+      }
     }
   };
 
