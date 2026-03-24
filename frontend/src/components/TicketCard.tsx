@@ -49,13 +49,24 @@ export function TicketCard({ ticket, users, onClick }: Props) {
       {...attributes}
       {...listeners}
       onClick={onClick}
-      className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-600 cursor-pointer transition-all select-none"
+      className={`rounded-lg border p-3 shadow-sm cursor-pointer transition-all select-none ${
+        ticket.archived
+          ? 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 opacity-60 hover:opacity-80'
+          : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-600'
+      }`}
     >
       <div className="flex items-start justify-between gap-2 mb-2">
         <span className="text-xs text-gray-400 dark:text-gray-500 font-mono">{ticket.id}</span>
-        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PRIORITY_STYLES[ticket.priority] ?? PRIORITY_STYLES.medium}`}>
-          {ticket.priority}
-        </span>
+        <div className="flex items-center gap-1">
+          {ticket.archived && (
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400">
+              archived
+            </span>
+          )}
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PRIORITY_STYLES[ticket.priority] ?? PRIORITY_STYLES.medium}`}>
+            {ticket.priority}
+          </span>
+        </div>
       </div>
       <p className="text-sm font-medium text-gray-800 dark:text-gray-100 mb-2 line-clamp-2">{ticket.title}</p>
       {ticket.labels.length > 0 && (

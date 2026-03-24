@@ -18,7 +18,7 @@ function AppInner() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, loading: authLoading, login, logout } = useAuth();
-  const { tickets, pollingFailed, createTicket, updateTicket, deleteTicket, moveTicket, reorderTickets, addComment } = useTickets(!!user);
+  const { tickets, pollingFailed, showArchived, setShowArchived, createTicket, updateTicket, deleteTicket, moveTicket, reorderTickets, addComment, unarchiveTicket } = useTickets(!!user);
   const [columns, setColumns] = useState<Column[]>([]);
   const [config, setConfig] = useState<Config>({ users: [], priorities: [], labels: [] });
   const [splitView, setSplitView] = useState(false);
@@ -97,8 +97,11 @@ function AppInner() {
               onUpdate={updateTicket}
               onDelete={deleteTicket}
               onAddComment={addComment}
+              onUnarchive={unarchiveTicket}
               selectedTicketId={urlTicketId}
               onTicketSelect={handleTicketSelect}
+              showArchived={showArchived}
+              onShowArchivedChange={setShowArchived}
             />
           ) : (
             <KnowledgeBase
@@ -127,8 +130,11 @@ function AppInner() {
                 onUpdate={updateTicket}
                 onDelete={deleteTicket}
                 onAddComment={addComment}
+                onUnarchive={unarchiveTicket}
                 selectedTicketId={null}
                 onTicketSelect={() => {}}
+                showArchived={showArchived}
+                onShowArchivedChange={setShowArchived}
               />
             )}
           </div>

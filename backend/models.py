@@ -30,6 +30,8 @@ class Ticket(BaseModel):
     created_by: str = ""
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    archived: bool = False
+    archived_at: datetime | None = None
     comments: list[Comment] = Field(default_factory=list)
     history: list[HistoryEntry] = Field(default_factory=list)
 

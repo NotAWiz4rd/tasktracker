@@ -24,11 +24,14 @@ interface Props {
   onUpdate: (id: string, data: TicketUpdate) => Promise<Ticket>;
   onDelete: (id: string) => Promise<void>;
   onAddComment: (id: string, body: string) => Promise<Comment>;
+  onUnarchive: (id: string) => Promise<Ticket>;
   selectedTicketId: string | null;
   onTicketSelect: (id: string | null) => void;
+  showArchived: boolean;
+  onShowArchivedChange: (show: boolean) => void;
 }
 
-export function Board({ columns, config, currentUser, tickets, onMove, onReorder, onCreate, onUpdate, onDelete, onAddComment, selectedTicketId, onTicketSelect }: Props) {
+export function Board({ columns, config, currentUser, tickets, onMove, onReorder, onCreate, onUpdate, onDelete, onAddComment, onUnarchive, selectedTicketId, onTicketSelect, showArchived, onShowArchivedChange }: Props) {
   const [newTicketStatus, setNewTicketStatus] = useState<string | null>(null);
   const selectedTicket = selectedTicketId ? (tickets.find(t => t.id === selectedTicketId) ?? null) : null;
   const [filters, setFilters] = useState({ assignee: '', priority: '', label: '', search: '' });
@@ -94,6 +97,8 @@ export function Board({ columns, config, currentUser, tickets, onMove, onReorder
         labels={config.labels}
         filters={filters}
         onChange={setFilters}
+        showArchived={showArchived}
+        onShowArchivedChange={onShowArchivedChange}
       />
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <div className="flex gap-5 p-6 overflow-x-auto flex-1">
@@ -120,6 +125,7 @@ export function Board({ columns, config, currentUser, tickets, onMove, onReorder
           onUpdate={onUpdate}
           onDelete={onDelete}
           onAddComment={onAddComment}
+          onUnarchive={onUnarchive}
         />
       )}
 

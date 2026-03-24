@@ -22,6 +22,8 @@ export interface Ticket {
   created_by: string;
   created_at: string;
   updated_at: string;
+  archived: boolean;
+  archived_at: string | null;
   comments: Comment[];
   history: HistoryEntry[];
 }

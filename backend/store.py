@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import shutil
 import time
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -58,3 +59,35 @@ def next_ticket_id() -> str:
     config["next_ticket_number"] = num + 1
     write_json(CONFIG_PATH, config)
     return f"TT-{num}"
+
+
+ARCHIVE_AFTER_DAYS = 30
+
+
+def auto_archive_done_tickets() -> None:
+    """Archive tickets in 'done' status that haven't been updated in ARCHIVE_AFTER_DAYS days."""
+    tickets = read_json(TICKETS_PATH)
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=ARCHIVE_AFTER_DAYS)
+    changed = False
+    for t in tickets:
+        if t.get("status") == "done" and not t.get("archived"):
+            updated = t.get("updated_at", "")
+            if isinstance(updated, str) and updated:
+                try:
+                    updated_dt = datetime.fromisoformat(updated)
+                    if updated_dt.tzinfo is None:
+                        updated_dt = updated_dt.replace(tzinfo=timezone.utc)
+                except (ValueError, TypeError):
+                    continue
+                if updated_dt < cutoff:
+                    t["archived"] = True
+                    t["archived_at"] = now.isoformat()
+                    t.setdefault("history", []).append({
+                        "at": now.isoformat(),
+                        "by": "system",
+                        "change": "auto-archived (done for 30+ days)",
+                    })
+                    changed = True
+    if changed:
+        write_json(TICKETS_PATH, tickets)

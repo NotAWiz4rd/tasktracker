@@ -61,8 +61,12 @@ def list_tickets(
     priority: str | None = Query(None),
     label: str | None = Query(None),
     search: str | None = Query(None),
+    include_archived: bool = Query(False),
 ) -> list[Ticket]:
+    store.auto_archive_done_tickets()
     tickets = store.read_json(store.TICKETS_PATH)
+    if not include_archived:
+        tickets = [t for t in tickets if not t.get("archived")]
     if status:
         status_lower = status.lower()
         tickets = [t for t in tickets if t["status"].lower() == status_lower]
@@ -199,6 +203,33 @@ def move_ticket(
     entry = HistoryEntry(at=now, by=user, change=f"status: {old_status} → {normalized_status}")
     data["status"] = normalized_status
     data["updated_at"] = now.isoformat()
+    # Unarchive if moving out of done
+    if normalized_status != "done" and data.get("archived"):
+        data["archived"] = False
+        data["archived_at"] = None
+        data.setdefault("history", []).append(
+            HistoryEntry(at=now, by=user, change="unarchived").model_dump(mode="json")
+        )
+    data.setdefault("history", []).append(entry.model_dump(mode="json"))
+    tickets[idx] = data
+    store.write_json(store.TICKETS_PATH, tickets)
+    return Ticket(**data)
+
+
+@router.patch("/{ticket_id}/unarchive")
+def unarchive_ticket(
+    ticket_id: str,
+    user: Annotated[str, Depends(get_current_user)],
+) -> Ticket:
+    tickets = store.read_json(store.TICKETS_PATH)
+    idx, data = _find_ticket(tickets, ticket_id)
+    if not data.get("archived"):
+        raise HTTPException(status_code=422, detail="Ticket is not archived")
+    now = datetime.now(timezone.utc)
+    data["archived"] = False
+    data["archived_at"] = None
+    data["updated_at"] = now.isoformat()
+    entry = HistoryEntry(at=now, by=user, change="unarchived")
     data.setdefault("history", []).append(entry.model_dump(mode="json"))
     tickets[idx] = data
     store.write_json(store.TICKETS_PATH, tickets)

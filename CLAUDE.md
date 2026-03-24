@@ -61,6 +61,9 @@ All state lives in files under `data/`:
 
 `backend/store.py` provides file-locked read/write for tickets/columns/config. `backend/kb_store.py` provides the same for the Knowledge Base. The MCP server imports these modules directly — no HTTP round-trips to the backend API.
 
+### Auto-Archiving
+Tickets in "done" status with no activity for 30 days are automatically archived. Archiving runs on each ticket list read (API or MCP). Archived tickets have `archived: true` and `archived_at` fields. They are excluded from listings by default — pass `include_archived=true` query param (API) or `include_archived` tool arg (MCP) to include them. The frontend has a "Show archived" checkbox in the FilterBar. Archived tickets can be restored via `PATCH /api/tickets/{id}/unarchive` or the "Restore ticket" button in the TicketModal.
+
 ### Authentication
 JWT tokens with a hardcoded dev secret (`"tasktracker-dev-secret-key-min32"`). Users/passwords are in `data/config.json`. 72-hour token expiry. The MCP server bypasses auth and accesses `store.py` directly, identifying itself as `agent:claude`.
 

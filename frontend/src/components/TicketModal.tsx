@@ -15,9 +15,10 @@ interface Props {
   onUpdate?: (id: string, data: TicketUpdate) => Promise<Ticket>;
   onDelete?: (id: string) => Promise<void>;
   onAddComment?: (id: string, body: string) => Promise<Comment>;
+  onUnarchive?: (id: string) => Promise<Ticket>;
 }
 
-export function TicketModal({ ticket, columns, config, currentUser, defaultStatus, onClose, onCreate, onUpdate, onDelete, onAddComment }: Props) {
+export function TicketModal({ ticket, columns, config, currentUser, defaultStatus, onClose, onCreate, onUpdate, onDelete, onAddComment, onUnarchive }: Props) {
   const isEdit = !!ticket;
   const [title, setTitle] = useState(ticket?.title ?? '');
   const [description, setDescription] = useState(ticket?.description ?? '');
@@ -91,6 +92,20 @@ export function TicketModal({ ticket, columns, config, currentUser, defaultStatu
             <X size={18} />
           </button>
         </div>
+
+        {isEdit && ticket?.archived && (
+          <div className="mx-6 mt-4 px-4 py-3 bg-gray-100 dark:bg-gray-700/50 rounded-lg flex items-center justify-between">
+            <span className="text-sm text-gray-600 dark:text-gray-300">This ticket is archived.</span>
+            {onUnarchive && (
+              <button
+                onClick={async () => { await onUnarchive(ticket!.id); onClose(); }}
+                className="text-sm px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                Restore ticket
+              </button>
+            )}
+          </div>
+        )}
 
         {isEdit && (
           <div className="flex border-b border-gray-100 dark:border-gray-700 px-6">

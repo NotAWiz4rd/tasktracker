@@ -25,6 +25,7 @@ from backend.store import (
     COLUMNS_PATH,
     CONFIG_PATH,
     TICKETS_PATH,
+    auto_archive_done_tickets,
     next_ticket_id,
     read_json,
     write_json,
@@ -68,7 +69,7 @@ async def list_tools() -> list[types.Tool]:
     return [
         types.Tool(
             name="list_tickets",
-            description="List tickets on the board, optionally filtered by status, assignee, priority, label, or search text.",
+            description="List tickets on the board, optionally filtered by status, assignee, priority, label, or search text. Archived tickets are excluded by default.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -77,6 +78,7 @@ async def list_tools() -> list[types.Tool]:
                     "priority": {"type": "string", "description": "Filter by priority (low, medium, high, urgent)"},
                     "label": {"type": "string", "description": "Filter by label"},
                     "search": {"type": "string", "description": "Search in title and description"},
+                    "include_archived": {"type": "boolean", "description": "Include archived tickets (default: false)"},
                 },
             },
         ),
@@ -265,8 +267,10 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextCont
 
 
 def _tool_list_tickets(args: dict) -> list[types.TextContent]:
+    auto_archive_done_tickets()
     tickets: list[dict] = read_json(TICKETS_PATH)
 
+    include_archived = args.get("include_archived", False)
     status = args.get("status")
     assignee = args.get("assignee")
     priority = args.get("priority")
@@ -275,6 +279,8 @@ def _tool_list_tickets(args: dict) -> list[types.TextContent]:
 
     results = []
     for t in tickets:
+        if not include_archived and t.get("archived"):
+            continue
         if status and t.get("status", "").lower() != status.lower():
             continue
         if assignee and t.get("assignee") != assignee:
@@ -370,7 +376,10 @@ def _tool_add_comment(args: dict) -> list[types.TextContent]:
 
 
 def _tool_get_board_summary() -> list[types.TextContent]:
-    tickets: list[dict] = read_json(TICKETS_PATH)
+    auto_archive_done_tickets()
+    all_tickets: list[dict] = read_json(TICKETS_PATH)
+    tickets = [t for t in all_tickets if not t.get("archived")]
+    archived_count = len(all_tickets) - len(tickets)
     columns_data = read_json(COLUMNS_PATH)
     columns = sorted(columns_data["columns"], key=lambda c: c["order"])
 
@@ -383,7 +392,9 @@ def _tool_get_board_summary() -> list[types.TextContent]:
     for col in columns:
         summary_lines.append(f"**{col['name']}**: {counts.get(col['id'], 0)} ticket(s)")
 
-    summary_lines += ["", f"**Total tickets**: {len(tickets)}"]
+    summary_lines += ["", f"**Total active tickets**: {len(tickets)}"]
+    if archived_count:
+        summary_lines.append(f"**Archived tickets**: {archived_count}")
 
     # Recent activity: last 5 updated tickets
     recent = sorted(tickets, key=lambda t: t.get("updated_at", ""), reverse=True)[:5]
@@ -630,7 +641,8 @@ async def read_resource(uri: types.AnyUrl) -> str:
     uri_str = str(uri)
 
     if uri_str == "tasktracker://board":
-        tickets = read_json(TICKETS_PATH)
+        all_tickets = read_json(TICKETS_PATH)
+        tickets = [t for t in all_tickets if not t.get("archived")]
         columns_data = read_json(COLUMNS_PATH)
         columns = sorted(columns_data["columns"], key=lambda c: c["order"])
         board = {
@@ -645,7 +657,8 @@ async def read_resource(uri: types.AnyUrl) -> str:
         return json.dumps(board, indent=2, default=str)
 
     if uri_str == "tasktracker://tickets":
-        tickets = read_json(TICKETS_PATH)
+        all_tickets = read_json(TICKETS_PATH)
+        tickets = [t for t in all_tickets if not t.get("archived")]
         return json.dumps(tickets, indent=2, default=str)
 
     if uri_str.startswith("tasktracker://ticket/"):

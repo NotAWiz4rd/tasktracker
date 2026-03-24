@@ -7,12 +7,14 @@ export function useTickets(enabled = true) {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [pollingFailed, setPollingFailed] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const { showToast } = useToast();
 
   const fetchTickets = useCallback(async () => {
     if (!enabled) return;
     try {
-      const data = await api.getTickets();
+      const params = showArchived ? { include_archived: 'true' } : undefined;
+      const data = await api.getTickets(params);
       setPollingFailed(false);
       setTickets(prev => {
         const prevMap = new Map(prev.map(t => [t.id, t]));
@@ -27,7 +29,7 @@ export function useTickets(enabled = true) {
     } finally {
       setLoading(false);
     }
-  }, [enabled]);
+  }, [enabled, showArchived]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -100,5 +102,16 @@ export function useTickets(enabled = true) {
     return comment;
   };
 
-  return { tickets, loading, pollingFailed, refresh: fetchTickets, createTicket, updateTicket, deleteTicket, moveTicket, reorderTickets, addComment };
+  const unarchiveTicket = async (id: string) => {
+    try {
+      const t = await api.unarchiveTicket(id);
+      setTickets(prev => prev.map(x => x.id === id ? t : x));
+      return t;
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Failed to unarchive ticket');
+      throw e;
+    }
+  };
+
+  return { tickets, loading, pollingFailed, showArchived, setShowArchived, refresh: fetchTickets, createTicket, updateTicket, deleteTicket, moveTicket, reorderTickets, addComment, unarchiveTicket };
 }

@@ -6,9 +6,11 @@ interface Props {
   labels: string[];
   filters: { assignee: string; priority: string; label: string; search: string };
   onChange: (filters: { assignee: string; priority: string; label: string; search: string }) => void;
+  showArchived: boolean;
+  onShowArchivedChange: (show: boolean) => void;
 }
 
-export function FilterBar({ users, priorities, labels, filters, onChange }: Props) {
+export function FilterBar({ users, priorities, labels, filters, onChange, showArchived, onShowArchivedChange }: Props) {
   const set = (key: string, val: string) => onChange({ ...filters, [key]: val });
   const [searchInput, setSearchInput] = useState(filters.search);
 
@@ -71,6 +73,15 @@ export function FilterBar({ users, priorities, labels, filters, onChange }: Prop
           Clear filters
         </button>
       )}
+      <label className="ml-auto flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={showArchived}
+          onChange={e => onShowArchivedChange(e.target.checked)}
+          className="rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500"
+        />
+        Show archived
+      </label>
     </div>
   );
 }
