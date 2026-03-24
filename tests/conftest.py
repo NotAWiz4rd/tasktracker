@@ -15,6 +15,7 @@ def tmp_data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Redirect the data directory to a temp folder for each test."""
     import backend.store as store_mod
     import backend.kb_store as kb_store_mod
+    import backend.attachment_store as att_store_mod
 
     data_dir = tmp_path / "data"
     data_dir.mkdir()
@@ -29,6 +30,9 @@ def tmp_data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setattr(store_mod, "TICKETS_PATH", data_dir / "tickets.json")
     monkeypatch.setattr(store_mod, "COLUMNS_PATH", data_dir / "columns.json")
     monkeypatch.setattr(store_mod, "CONFIG_PATH", data_dir / "config.json")
+
+    # Patch attachment paths
+    monkeypatch.setattr(att_store_mod, "ATTACHMENTS_DIR", data_dir / "attachments")
 
     # Patch KB paths
     kb_dir = data_dir / "kb"

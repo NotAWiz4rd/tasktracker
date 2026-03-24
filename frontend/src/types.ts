@@ -11,6 +11,15 @@ export interface HistoryEntry {
   change: string;
 }
 
+export interface Attachment {
+  id: string;
+  filename: string;
+  content_type: string;
+  size_bytes: number;
+  created_by: string;
+  created_at: string;
+}
+
 export interface Ticket {
   id: string;
   title: string;
@@ -26,6 +35,7 @@ export interface Ticket {
   archived_at: string | null;
   comments: Comment[];
   history: HistoryEntry[];
+  attachments: Attachment[];
 }
 
 export interface Column {
@@ -74,6 +84,7 @@ export interface Article {
   created_at: string;
   updated_by: string;
   updated_at: string;
+  attachments: Attachment[];
 }
 
 export interface ArticleWithContent extends Article {

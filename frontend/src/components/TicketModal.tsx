@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { X, Trash2 } from 'lucide-react';
-import type { Ticket, Column, Comment, TicketCreate, TicketUpdate } from '../types';
+import type { Ticket, Column, Comment, Attachment, TicketCreate, TicketUpdate } from '../types';
 import type { Config } from '../types';
 import { CommentThread } from './CommentThread';
+import { AttachmentSection } from './AttachmentSection';
 
 interface Props {
   ticket?: Ticket | null;
@@ -15,10 +16,12 @@ interface Props {
   onUpdate?: (id: string, data: TicketUpdate) => Promise<Ticket>;
   onDelete?: (id: string) => Promise<void>;
   onAddComment?: (id: string, body: string) => Promise<Comment>;
+  onUploadAttachment?: (id: string, file: File) => Promise<Attachment>;
+  onDeleteAttachment?: (id: string, attId: string) => Promise<void>;
   onUnarchive?: (id: string) => Promise<Ticket>;
 }
 
-export function TicketModal({ ticket, columns, config, currentUser, defaultStatus, onClose, onCreate, onUpdate, onDelete, onAddComment, onUnarchive }: Props) {
+export function TicketModal({ ticket, columns, config, currentUser, defaultStatus, onClose, onCreate, onUpdate, onDelete, onAddComment, onUploadAttachment, onDeleteAttachment, onUnarchive }: Props) {
   const isEdit = !!ticket;
   const [title, setTitle] = useState(ticket?.title ?? '');
   const [description, setDescription] = useState(ticket?.description ?? '');
@@ -240,6 +243,16 @@ export function TicketModal({ ticket, columns, config, currentUser, defaultStatu
               )}
             </div>
           </form>
+        )}
+
+        {isEdit && onUploadAttachment && activeTab === 'details' && (
+          <div className="px-6 pb-4 border-t border-gray-100 dark:border-gray-700 pt-4">
+            <AttachmentSection
+              attachments={ticket!.attachments || []}
+              onUpload={(file) => onUploadAttachment(ticket!.id, file)}
+              onDelete={(attId) => onDeleteAttachment!(ticket!.id, attId)}
+            />
+          </div>
         )}
 
         {isEdit && onAddComment && activeTab === 'details' && (

@@ -8,7 +8,7 @@ import {
   closestCenter,
 } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
-import type { Column as ColumnType, Ticket, Comment, Config, TicketCreate, TicketUpdate } from '../types';
+import type { Column as ColumnType, Ticket, Comment, Attachment, Config, TicketCreate, TicketUpdate } from '../types';
 import { Column } from './Column';
 import { TicketModal } from './TicketModal';
 import { FilterBar } from './FilterBar';
@@ -24,6 +24,8 @@ interface Props {
   onUpdate: (id: string, data: TicketUpdate) => Promise<Ticket>;
   onDelete: (id: string) => Promise<void>;
   onAddComment: (id: string, body: string) => Promise<Comment>;
+  onUploadAttachment: (id: string, file: File) => Promise<Attachment>;
+  onDeleteAttachment: (id: string, attId: string) => Promise<void>;
   onUnarchive: (id: string) => Promise<Ticket>;
   selectedTicketId: string | null;
   onTicketSelect: (id: string | null) => void;
@@ -31,7 +33,7 @@ interface Props {
   onShowArchivedChange: (show: boolean) => void;
 }
 
-export function Board({ columns, config, currentUser, tickets, onMove, onReorder, onCreate, onUpdate, onDelete, onAddComment, onUnarchive, selectedTicketId, onTicketSelect, showArchived, onShowArchivedChange }: Props) {
+export function Board({ columns, config, currentUser, tickets, onMove, onReorder, onCreate, onUpdate, onDelete, onAddComment, onUploadAttachment, onDeleteAttachment, onUnarchive, selectedTicketId, onTicketSelect, showArchived, onShowArchivedChange }: Props) {
   const [newTicketStatus, setNewTicketStatus] = useState<string | null>(null);
   const selectedTicket = selectedTicketId ? (tickets.find(t => t.id === selectedTicketId) ?? null) : null;
   const [filters, setFilters] = useState({ assignee: '', priority: '', label: '', search: '' });
@@ -125,6 +127,8 @@ export function Board({ columns, config, currentUser, tickets, onMove, onReorder
           onUpdate={onUpdate}
           onDelete={onDelete}
           onAddComment={onAddComment}
+          onUploadAttachment={onUploadAttachment}
+          onDeleteAttachment={onDeleteAttachment}
           onUnarchive={onUnarchive}
         />
       )}

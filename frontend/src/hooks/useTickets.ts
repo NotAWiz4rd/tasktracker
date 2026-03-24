@@ -102,6 +102,27 @@ export function useTickets(enabled = true) {
     return comment;
   };
 
+  const uploadAttachment = async (id: string, file: File) => {
+    try {
+      const att = await api.uploadTicketAttachment(id, file);
+      setTickets(prev => prev.map(x => x.id === id ? { ...x, attachments: [...(x.attachments || []), att] } : x));
+      return att;
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Failed to upload attachment');
+      throw e;
+    }
+  };
+
+  const deleteAttachment = async (id: string, attId: string) => {
+    try {
+      await api.deleteTicketAttachment(id, attId);
+      setTickets(prev => prev.map(x => x.id === id ? { ...x, attachments: (x.attachments || []).filter(a => a.id !== attId) } : x));
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Failed to delete attachment');
+      throw e;
+    }
+  };
+
   const unarchiveTicket = async (id: string) => {
     try {
       const t = await api.unarchiveTicket(id);
@@ -113,5 +134,5 @@ export function useTickets(enabled = true) {
     }
   };
 
-  return { tickets, loading, pollingFailed, showArchived, setShowArchived, refresh: fetchTickets, createTicket, updateTicket, deleteTicket, moveTicket, reorderTickets, addComment, unarchiveTicket };
+  return { tickets, loading, pollingFailed, showArchived, setShowArchived, refresh: fetchTickets, createTicket, updateTicket, deleteTicket, moveTicket, reorderTickets, addComment, unarchiveTicket, uploadAttachment, deleteAttachment };
 }

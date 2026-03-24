@@ -30,6 +30,11 @@ from backend.store import (
     read_json,
     write_json,
 )
+from backend.attachment_store import (
+    delete_all as delete_all_attachments,
+    save_file as save_attachment_file,
+    ATTACHMENTS_DIR,
+)
 from backend.kb_store import (
     ensure_kb_dirs,
     read_index as kb_read_index,
@@ -229,6 +234,31 @@ async def list_tools() -> list[types.Tool]:
             description="Get the full knowledge base tree structure (nested JSON) for navigation.",
             inputSchema={"type": "object", "properties": {}},
         ),
+        # --- Attachments ---
+        types.Tool(
+            name="list_attachments",
+            description="List attachments on a ticket or KB article.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "ticket_id": {"type": "string", "description": "Ticket ID (e.g. TT-1). Provide either ticket_id or slug."},
+                    "slug": {"type": "string", "description": "KB article slug. Provide either ticket_id or slug."},
+                },
+            },
+        ),
+        types.Tool(
+            name="add_attachment_from_path",
+            description="Attach a local file to a ticket or KB article by providing its file path.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "file_path": {"type": "string", "description": "Absolute path to the file to attach"},
+                    "ticket_id": {"type": "string", "description": "Ticket ID (e.g. TT-1). Provide either ticket_id or slug."},
+                    "slug": {"type": "string", "description": "KB article slug. Provide either ticket_id or slug."},
+                },
+                "required": ["file_path"],
+            },
+        ),
     ]
 
 
@@ -262,6 +292,10 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextCont
         return _tool_delete_article(arguments)
     elif name == "get_kb_tree":
         return _tool_get_kb_tree()
+    elif name == "list_attachments":
+        return _tool_list_attachments(arguments)
+    elif name == "add_attachment_from_path":
+        return _tool_add_attachment_from_path(arguments)
     else:
         raise ValueError(f"Unknown tool: {name}")
 
@@ -348,10 +382,11 @@ def _tool_update_ticket(args: dict) -> list[types.TextContent]:
 def _tool_delete_ticket(args: dict) -> list[types.TextContent]:
     ticket_id = args["ticket_id"]
     tickets: list[dict] = read_json(TICKETS_PATH)
-    original_count = len(tickets)
-    tickets = [t for t in tickets if t["id"] != ticket_id]
-    if len(tickets) == original_count:
+    ticket = _find_ticket(tickets, ticket_id)
+    if ticket is None:
         return [types.TextContent(type="text", text=f"Error: ticket {ticket_id!r} not found")]
+    delete_all_attachments(ticket.get("attachments", []))
+    tickets = [t for t in tickets if t["id"] != ticket_id]
     write_json(TICKETS_PATH, tickets)
     return [types.TextContent(type="text", text=f"Deleted ticket {ticket_id}")]
 
@@ -553,7 +588,12 @@ def _tool_delete_article(args: dict) -> list[types.TextContent]:
     ensure_kb_dirs()
     slug = args["slug"]
     index = kb_read_index()
-    original_count = len(index)
+
+    meta = next((a for a in index if a["slug"] == slug), None)
+    if meta is None:
+        return [types.TextContent(type="text", text=f"Error: article {slug!r} not found")]
+
+    delete_all_attachments(meta.get("attachments", []))
 
     # Re-parent children
     for a in index:
@@ -561,9 +601,6 @@ def _tool_delete_article(args: dict) -> list[types.TextContent]:
             a["parent"] = None
 
     index = [a for a in index if a["slug"] != slug]
-    if len(index) == original_count:
-        return [types.TextContent(type="text", text=f"Error: article {slug!r} not found")]
-
     kb_write_index(index)
     delete_article_file(slug)
     return [types.TextContent(type="text", text=f"Deleted article {slug}")]
@@ -588,6 +625,89 @@ def _tool_get_kb_tree() -> list[types.TextContent]:
             roots.append(node)
 
     return [types.TextContent(type="text", text=json.dumps(roots, indent=2, default=str))]
+
+
+# ---------------------------------------------------------------------------
+# Attachment Tool implementations
+# ---------------------------------------------------------------------------
+
+def _tool_list_attachments(args: dict) -> list[types.TextContent]:
+    ticket_id = args.get("ticket_id")
+    slug = args.get("slug")
+
+    if ticket_id:
+        tickets = read_json(TICKETS_PATH)
+        ticket = _find_ticket(tickets, ticket_id)
+        if ticket is None:
+            return [types.TextContent(type="text", text=f"Error: ticket {ticket_id!r} not found")]
+        attachments = ticket.get("attachments", [])
+    elif slug:
+        ensure_kb_dirs()
+        index = kb_read_index()
+        meta = next((a for a in index if a["slug"] == slug), None)
+        if meta is None:
+            return [types.TextContent(type="text", text=f"Error: article {slug!r} not found")]
+        attachments = meta.get("attachments", [])
+    else:
+        return [types.TextContent(type="text", text="Error: provide either ticket_id or slug")]
+
+    return [types.TextContent(type="text", text=json.dumps(attachments, indent=2, default=str))]
+
+
+def _tool_add_attachment_from_path(args: dict) -> list[types.TextContent]:
+    import mimetypes
+    from pathlib import Path
+
+    file_path = Path(args["file_path"])
+    if not file_path.exists():
+        return [types.TextContent(type="text", text=f"Error: file not found: {file_path}")]
+
+    data = file_path.read_bytes()
+    if len(data) > 10 * 1024 * 1024:
+        return [types.TextContent(type="text", text="Error: file too large (max 10 MB)")]
+
+    content_type = mimetypes.guess_type(file_path.name)[0] or "application/octet-stream"
+    att_id = f"att-{uuid.uuid4().hex[:8]}"
+    ext = file_path.suffix
+    save_attachment_file(att_id, ext, data)
+
+    att_meta = {
+        "id": att_id,
+        "filename": file_path.name,
+        "content_type": content_type,
+        "size_bytes": len(data),
+        "created_by": AGENT_NAME,
+        "created_at": _now(),
+    }
+
+    ticket_id = args.get("ticket_id")
+    slug = args.get("slug")
+
+    if ticket_id:
+        tickets = read_json(TICKETS_PATH)
+        ticket = _find_ticket(tickets, ticket_id)
+        if ticket is None:
+            return [types.TextContent(type="text", text=f"Error: ticket {ticket_id!r} not found")]
+        ticket.setdefault("attachments", []).append(att_meta)
+        ticket["updated_at"] = _now()
+        ticket.setdefault("history", []).append({
+            "at": _now(), "by": AGENT_NAME, "change": f"attached {file_path.name}",
+        })
+        write_json(TICKETS_PATH, tickets)
+    elif slug:
+        ensure_kb_dirs()
+        index = kb_read_index()
+        meta = next((a for a in index if a["slug"] == slug), None)
+        if meta is None:
+            return [types.TextContent(type="text", text=f"Error: article {slug!r} not found")]
+        meta.setdefault("attachments", []).append(att_meta)
+        meta["updated_by"] = AGENT_NAME
+        meta["updated_at"] = _now()
+        kb_write_index(index)
+    else:
+        return [types.TextContent(type="text", text="Error: provide either ticket_id or slug")]
+
+    return [types.TextContent(type="text", text=json.dumps(att_meta, indent=2, default=str))]
 
 
 # ---------------------------------------------------------------------------

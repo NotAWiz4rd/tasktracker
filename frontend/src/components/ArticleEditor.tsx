@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Save, Trash2, Eye, Edit2, Plus, Share2, X, Copy } from 'lucide-react';
-import type { ArticleWithContent, Article, ArticleCreate, ArticleUpdate } from '../types';
+import type { ArticleWithContent, Article, Attachment, ArticleCreate, ArticleUpdate } from '../types';
 import { api } from '../api';
+import { AttachmentSection } from './AttachmentSection';
 
 interface Props {
   article: ArticleWithContent | null;
@@ -14,9 +15,11 @@ interface Props {
   onDelete: (slug: string) => Promise<unknown>;
   onSelect: (slug: string) => void;
   onNewChild: (parentSlug: string) => void;
+  onUploadAttachment?: (slug: string, file: File) => Promise<Attachment>;
+  onDeleteAttachment?: (slug: string, attId: string) => Promise<void>;
 }
 
-export function ArticleEditor({ article, articles, isNew, defaultParent, onSave, onCreate, onDelete, onSelect, onNewChild }: Props) {
+export function ArticleEditor({ article, articles, isNew, defaultParent, onSave, onCreate, onDelete, onSelect, onNewChild, onUploadAttachment, onDeleteAttachment }: Props) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [tags, setTags] = useState('');
@@ -227,6 +230,17 @@ export function ArticleEditor({ article, articles, isNew, defaultParent, onSave,
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Attachments */}
+      {!isNew && article && onUploadAttachment && (
+        <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+          <AttachmentSection
+            attachments={article.attachments || []}
+            onUpload={(file) => onUploadAttachment(article.slug, file)}
+            onDelete={(attId) => onDeleteAttachment!(article.slug, attId)}
+          />
         </div>
       )}
 

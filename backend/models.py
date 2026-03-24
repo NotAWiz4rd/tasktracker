@@ -4,6 +4,17 @@ from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 
 
+# --- Attachment ---
+
+class Attachment(BaseModel):
+    id: str
+    filename: str
+    content_type: str
+    size_bytes: int
+    created_by: str
+    created_at: datetime
+
+
 # --- Ticket ---
 
 class Comment(BaseModel):
@@ -34,6 +45,7 @@ class Ticket(BaseModel):
     archived_at: datetime | None = None
     comments: list[Comment] = Field(default_factory=list)
     history: list[HistoryEntry] = Field(default_factory=list)
+    attachments: list[Attachment] = Field(default_factory=list)
 
 
 class TicketCreate(BaseModel):
@@ -141,6 +153,7 @@ class Article(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_by: str = ""
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    attachments: list[Attachment] = Field(default_factory=list)
 
 
 class ArticleWithContent(Article):

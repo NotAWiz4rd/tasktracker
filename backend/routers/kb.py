@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from ..auth import get_current_user, generate_share_token, verify_share_token
 from ..models import Article, ArticleCreate, ArticleUpdate, ArticleWithContent, SharedArticle, SharedArticleResponse
-from .. import kb_store
+from .. import attachment_store, kb_store
 
 router = APIRouter(prefix="/api/kb", tags=["knowledge-base"])
 
@@ -211,6 +211,7 @@ def delete_article(
         if a.get("parent") == slug:
             a["parent"] = None
 
+    attachment_store.delete_all(index[idx].get("attachments", []))
     index.pop(idx)
     kb_store.write_index(index)
     kb_store.delete_article_file(slug)

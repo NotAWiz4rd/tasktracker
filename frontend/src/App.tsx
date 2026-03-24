@@ -18,7 +18,7 @@ function AppInner() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, loading: authLoading, login, logout } = useAuth();
-  const { tickets, pollingFailed, showArchived, setShowArchived, createTicket, updateTicket, deleteTicket, moveTicket, reorderTickets, addComment, unarchiveTicket } = useTickets(!!user);
+  const { tickets, pollingFailed, showArchived, setShowArchived, createTicket, updateTicket, deleteTicket, moveTicket, reorderTickets, addComment, unarchiveTicket, uploadAttachment, deleteAttachment } = useTickets(!!user);
   const [columns, setColumns] = useState<Column[]>([]);
   const [config, setConfig] = useState<Config>({ users: [], priorities: [], labels: [] });
   const [splitView, setSplitView] = useState(false);
@@ -97,6 +97,8 @@ function AppInner() {
               onUpdate={updateTicket}
               onDelete={deleteTicket}
               onAddComment={addComment}
+              onUploadAttachment={uploadAttachment}
+              onDeleteAttachment={deleteAttachment}
               onUnarchive={unarchiveTicket}
               selectedTicketId={urlTicketId}
               onTicketSelect={handleTicketSelect}
@@ -130,6 +132,8 @@ function AppInner() {
                 onUpdate={updateTicket}
                 onDelete={deleteTicket}
                 onAddComment={addComment}
+                onUploadAttachment={uploadAttachment}
+                onDeleteAttachment={deleteAttachment}
                 onUnarchive={unarchiveTicket}
                 selectedTicketId={null}
                 onTicketSelect={() => {}}

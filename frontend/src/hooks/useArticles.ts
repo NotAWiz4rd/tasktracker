@@ -79,6 +79,33 @@ export function useArticles(enabled = true) {
     }
   };
 
+  const uploadArticleAttachment = async (slug: string, file: File) => {
+    try {
+      const att = await api.uploadArticleAttachment(slug, file);
+      if (selectedArticle && selectedArticle.slug === slug) {
+        setSelectedArticle({ ...selectedArticle, attachments: [...(selectedArticle.attachments || []), att] });
+      }
+      await fetchArticles();
+      return att;
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Failed to upload attachment');
+      throw e;
+    }
+  };
+
+  const deleteArticleAttachment = async (slug: string, attId: string) => {
+    try {
+      await api.deleteArticleAttachment(slug, attId);
+      if (selectedArticle && selectedArticle.slug === slug) {
+        setSelectedArticle({ ...selectedArticle, attachments: (selectedArticle.attachments || []).filter(a => a.id !== attId) });
+      }
+      await fetchArticles();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Failed to delete attachment');
+      throw e;
+    }
+  };
+
   return {
     articles,
     selectedArticle,
@@ -87,6 +114,8 @@ export function useArticles(enabled = true) {
     createArticle,
     updateArticle,
     deleteArticle,
+    uploadArticleAttachment,
+    deleteArticleAttachment,
     refresh: fetchArticles,
   };
 }

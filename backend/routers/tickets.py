@@ -17,7 +17,7 @@ from ..models import (
     TicketReorder,
     TicketUpdate,
 )
-from .. import store
+from .. import attachment_store, store
 
 router = APIRouter(prefix="/api/tickets", tags=["tickets"])
 
@@ -147,7 +147,8 @@ def delete_ticket(
     _user: Annotated[str, Depends(get_current_user)],
 ) -> None:
     tickets = store.read_json(store.TICKETS_PATH)
-    idx, _ = _find_ticket(tickets, ticket_id)
+    idx, data = _find_ticket(tickets, ticket_id)
+    attachment_store.delete_all(data.get("attachments", []))
     tickets.pop(idx)
     store.write_json(store.TICKETS_PATH, tickets)
 

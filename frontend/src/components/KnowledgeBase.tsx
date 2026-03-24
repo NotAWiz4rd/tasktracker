@@ -9,7 +9,7 @@ interface Props {
 }
 
 export function KnowledgeBase({ initialSlug, onArticleSelect }: Props) {
-  const { articles, selectedArticle, selectArticle, createArticle, updateArticle, deleteArticle } = useArticles();
+  const { articles, selectedArticle, selectArticle, createArticle, updateArticle, deleteArticle, uploadArticleAttachment, deleteArticleAttachment } = useArticles();
   const [isNew, setIsNew] = useState(false);
   const [defaultParent, setDefaultParent] = useState<string | null>(null);
 
@@ -75,6 +75,8 @@ export function KnowledgeBase({ initialSlug, onArticleSelect }: Props) {
           onDelete={handleDelete}
           onSelect={handleSelect}
           onNewChild={handleNewChild}
+          onUploadAttachment={uploadArticleAttachment}
+          onDeleteAttachment={deleteArticleAttachment}
         />
       </div>
     </div>
