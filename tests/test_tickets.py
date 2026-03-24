@@ -30,13 +30,13 @@ def test_list_tickets_empty(client: TestClient, auth_headers: dict) -> None:
 
 
 def test_list_tickets_with_filters(client: TestClient, auth_headers: dict) -> None:
-    client.post("/api/tickets", json={"title": "A", "priority": "high", "status": "todo"}, headers=auth_headers)
+    client.post("/api/tickets", json={"title": "A", "priority": "high", "status": "backlog"}, headers=auth_headers)
     client.post("/api/tickets", json={"title": "B", "priority": "low", "status": "backlog"}, headers=auth_headers)
-    client.post("/api/tickets", json={"title": "C", "priority": "high", "status": "todo", "labels": ["bug"]}, headers=auth_headers)
+    client.post("/api/tickets", json={"title": "C", "priority": "high", "status": "backlog", "labels": ["bug"]}, headers=auth_headers)
 
     # Filter by status
-    resp = client.get("/api/tickets?status=todo", headers=auth_headers)
-    assert len(resp.json()) == 2
+    resp = client.get("/api/tickets?status=backlog", headers=auth_headers)
+    assert len(resp.json()) == 3
 
     # Filter by priority
     resp = client.get("/api/tickets?priority=low", headers=auth_headers)

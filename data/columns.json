@@ -1,8 +1,8 @@
 {
   "columns": [
     {
-      "id": "todo",
-      "name": "To Do",
+      "id": "backlog",
+      "name": "Backlog",
       "order": 0
     },
     {

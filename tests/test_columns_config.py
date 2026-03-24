@@ -7,7 +7,7 @@ def test_list_columns(client: TestClient, auth_headers: dict) -> None:
     resp = client.get("/api/columns", headers=auth_headers)
     assert resp.status_code == 200
     cols = resp.json()["columns"]
-    assert len(cols) == 5
+    assert len(cols) == 4
     assert cols[0]["id"] == "backlog"
     assert cols[-1]["id"] == "done"
 

@@ -73,7 +73,7 @@ async def list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "status": {"type": "string", "description": "Filter by column status (e.g. backlog, todo, in-progress, review, done)"},
+                    "status": {"type": "string", "description": "Filter by column status (e.g. backlog, in-progress, review, done)"},
                     "assignee": {"type": "string", "description": "Filter by assignee user ID"},
                     "priority": {"type": "string", "description": "Filter by priority (low, medium, high, urgent)"},
                     "label": {"type": "string", "description": "Filter by label"},

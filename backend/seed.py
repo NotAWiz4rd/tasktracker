@@ -8,10 +8,9 @@ from . import kb_store
 SEED_COLUMNS = {
     "columns": [
         {"id": "backlog", "name": "Backlog", "order": 0},
-        {"id": "todo", "name": "To Do", "order": 1},
-        {"id": "in-progress", "name": "In Progress", "order": 2},
-        {"id": "review", "name": "Review", "order": 3},
-        {"id": "done", "name": "Done", "order": 4},
+        {"id": "in-progress", "name": "In Progress", "order": 1},
+        {"id": "review", "name": "Review", "order": 2},
+        {"id": "done", "name": "Done", "order": 3},
     ]
 }
 
